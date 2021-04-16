@@ -1,1 +1,3 @@
-net_control
+# Control Theory Final Project: Neural Net Control
+
+
