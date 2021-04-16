@@ -1,6 +1,0 @@
-[book]
-authors = ["Diego"]
-language = "en"
-multilingual = false
-src = "src"
-title = "Control Theory Final Project: Neural Net Control"
