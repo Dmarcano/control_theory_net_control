@@ -1,3 +1,4 @@
+/// A network of neurons
 pub struct NeuralNetwork ; 
 
 
