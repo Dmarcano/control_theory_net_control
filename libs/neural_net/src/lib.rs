@@ -47,6 +47,8 @@ impl Neuron {
 
     /// Takes an input and applies the neuron's weights to it
     fn propagate(&self, inputs: &Vec<f64>) -> f64 { 
+        
+        assert_eq!(self.weights.len(), inputs.len());
         // apply each of the weights and apply it to its respective input
         let weighted_sum = self.weights.iter()
             .zip(inputs.iter())
