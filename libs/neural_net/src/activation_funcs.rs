@@ -1,5 +1,5 @@
-enum ActivationFunctions { 
+enum ActivationFunctions {
     ReLU,
     Sigmoid,
-    TanH
+    TanH,
 }
