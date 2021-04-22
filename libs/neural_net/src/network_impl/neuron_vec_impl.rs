@@ -1,4 +1,5 @@
-
+use crate::{Layer, LayerWeights, F64Vector};
+use nalgebra::{DVector};
 
 struct NeuronVectorLayer {
     neurons: Vec<Neuron>,
@@ -14,21 +15,28 @@ struct Neuron {
 
 
 impl Layer for NeuronVectorLayer {
-    /// propagates the input to each neuron in a layer.
-    /// Outputs a vector with the output of each neuron propagating on the whole input
-    /// Where the ith value is the response of the ith-neuron
-    fn propagate(&self, inputs: &Vec<f64>) -> Vec<f64> {
-        self.neurons
-            .iter()
-            .map(|neuron| neuron.propagate(&inputs))
-            .collect()
+
+    fn propagate(&self, inputs: &F64Vector) -> F64Vector {
+        DVector::from_vec( 
+            self.neurons
+                .iter()
+                .map(|neuron| neuron.propagate(&inputs))
+                .collect())
+    }
+
+    fn new_random(&self, num_neurons : usize) -> Box<dyn Layer > { 
+        todo!()
+    }
+
+    fn new_from_weights(&self, _: LayerWeights) -> Box<dyn Layer> { 
+        todo!() 
     }
 }
 
 
 impl Neuron {
     /// Takes an input and applies the neuron's weights to it
-    fn propagate(&self, inputs: &Vec<f64>) -> f64 {
+    fn propagate(&self, inputs: &F64Vector) -> f64 {
         assert_eq!(self.weights.len(), inputs.len());
         // apply each of the weights and apply it to its respective input
         let weighted_sum = self

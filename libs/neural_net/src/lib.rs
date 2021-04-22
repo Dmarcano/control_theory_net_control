@@ -1,7 +1,9 @@
 mod activation_funcs;
 mod network_impl; 
+use nalgebra::{DVector};
 
-
+/// A double precision dynamic vector for use with neural nets
+pub type F64Vector = DVector<f64>;
 
 /// A network of neurons
 pub struct NeuralNetwork {
@@ -26,9 +28,12 @@ pub struct LayerWeights {
 
 /// A trait for the behavior of what a nueral net layer should be like
 trait Layer {
-    fn propagate(&self, inputs: &Vec<f64>) -> Vec<f64>;
+    /// propagates the input to each neuron in a layer.
+    /// Outputs a vector with the output of each neuron propagating on the whole input
+    /// Where the ith value is the response of the ith-neuron
+    fn propagate(&self, inputs: &F64Vector) -> F64Vector;
 
-    fn new_random(&self) -> Box<dyn Layer>; 
+    fn new_random(&self, num_neurons : usize) -> Box<dyn Layer>; 
 
     fn new_from_weights(&self, weights : LayerWeights) -> Box<dyn Layer>;
 }
@@ -36,11 +41,20 @@ trait Layer {
 impl NeuralNetwork {
     /// propagates forward the input throughout the network and outputs the output from the
     /// final layer
-    pub fn propagate(&self, inputs: Vec<f64>) -> Vec<f64> {
+    pub fn propagate_vec(&self, inputs: Vec<f64>) -> F64Vector {
+        let transform = DVector::from_vec(inputs); 
+
+        self.layers
+            .iter()
+            .fold(transform, |next_inputs, layer| layer.propagate(&next_inputs))
+    }
+
+    pub fn propagate(&self, inputs: F64Vector) -> F64Vector {
         self.layers
             .iter()
             .fold(inputs, |next_inputs, layer| layer.propagate(&next_inputs))
     }
+
 
     /// creates a brand new network using random weights and biases
     ///
