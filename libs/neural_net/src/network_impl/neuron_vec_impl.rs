@@ -1,10 +1,9 @@
-use crate::{Layer, LayerWeights, F64Vector};
-use nalgebra::{DVector};
+use crate::{F64Vector, Layer, LayerWeights};
+use nalgebra::DVector;
 
 struct NeuronVectorLayer {
     neurons: Vec<Neuron>,
 }
-
 
 // A neuron keeps track of an internal bias and the set of weights
 // it has relative to
@@ -13,26 +12,24 @@ struct Neuron {
     weights: Vec<f64>,
 }
 
-
 impl Layer for NeuronVectorLayer {
-
     fn propagate(&self, inputs: &F64Vector) -> F64Vector {
-        DVector::from_vec( 
+        DVector::from_vec(
             self.neurons
                 .iter()
                 .map(|neuron| neuron.propagate(&inputs))
-                .collect())
+                .collect(),
+        )
     }
 
-    fn new_random(&self, num_neurons : usize) -> Box<dyn Layer > { 
+    fn new_random(&self, num_neurons: usize) -> Box<dyn Layer> {
         todo!()
     }
 
-    fn new_from_weights(&self, _: LayerWeights) -> Box<dyn Layer> { 
-        todo!() 
+    fn new_from_weights(&self, _: LayerWeights) -> Box<dyn Layer> {
+        todo!()
     }
 }
-
 
 impl Neuron {
     /// Takes an input and applies the neuron's weights to it

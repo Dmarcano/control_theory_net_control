@@ -1,25 +1,78 @@
-use crate::{Layer, LayerWeights, F64Vector};
-use nalgebra::{Matrix, DMatrix};
+use crate::{F64Vector, Layer, LayerWeights};
+use nalgebra::{DMatrix, RowDVector};
 
-
-struct LayerMatrix { 
-    mat : DMatrix<f64>
+#[derive(Debug)]
+struct LayerMatrix {
+    mat: DMatrix<f64>,
 }
 
+impl LayerMatrix {
+    fn new_from_weights(input: LayerWeights) -> Self {
+        assert!(input.weights.len() > 0);
+        // iterate over the vectors as rows and use them to create a matrix by row order
+        let row_vecs: Vec<RowDVector<f64>> = input
+            .weights
+            .into_iter()
+            .map(|row| RowDVector::from_vec(row))
+            .collect();
+        let mat = DMatrix::from_rows(row_vecs.as_ref());
+        LayerMatrix { mat }
+    }
+}
 
-impl Layer for LayerMatrix { 
-    
-    fn propagate(&self, inputs: &F64Vector) -> F64Vector{ 
+impl Layer for LayerMatrix {
+    fn propagate(&self, inputs: &F64Vector) -> F64Vector {
         let out = inputs.transpose() * &self.mat;
         out.transpose()
     }
 
-    fn new_random(&self, num_neurons : usize) -> Box<dyn Layer > { 
-        todo!() 
-    }
-
-    fn new_from_weights(&self, _: LayerWeights) ->Box<dyn Layer> { 
+    fn new_random(&self, num_neurons: usize) -> Box<dyn Layer> {
         todo!()
     }
 
+    // given a set of weights as 2-D vectors we can immediately convert them to our matrix
+    fn new_from_weights(&self, input: LayerWeights) -> Box<dyn Layer> {
+        assert!(input.weights.len() > 0);
+        // iterate over the vectors as rows and use them to create a matrix by row order
+        let row_vecs: Vec<RowDVector<f64>> = input
+            .weights
+            .into_iter()
+            .map(|row| RowDVector::from_vec(row))
+            .collect();
+        let mat = DMatrix::from_rows(row_vecs.as_ref());
+        Box::new(LayerMatrix { mat })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Layer, LayerMatrix};
+    use crate::LayerWeights;
+    use approx::relative_eq;
+    use nalgebra::storage::Storage;
+
+    #[test]
+    fn new_random_test() {}
+
+    #[test]
+    fn new_from_weights_test() {
+        let weights = vec![vec![0.1, 0.2, 0.3], vec![0.4, 0.5, 0.6]];
+
+        let layer = LayerMatrix::new_from_weights(LayerWeights { weights });
+
+        let expected = nalgebra::Matrix2x3::new(0.1, 0.2, 0.3, 0.4, 0.5, 0.6);
+
+        // iterate and zip => (zip means to iterate two iterators with each item in the same order)
+        layer
+            .mat
+            .as_slice()
+            .iter()
+            .zip(expected.as_slice().iter())
+            .for_each(|(lhs, rhs)| assert!(approx::relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
+    }
+
+    #[test]
+    fn propagation_test() {
+        // unimplemented!();
+    }
 }
