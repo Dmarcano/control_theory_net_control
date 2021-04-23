@@ -1,2 +1,2 @@
-mod matrix_impl;
-mod neuron_vec_impl;
+pub mod matrix_impl;
+pub mod neuron_vec_impl;

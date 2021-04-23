@@ -2,6 +2,8 @@ mod activation_funcs;
 mod network_impl;
 use nalgebra::DVector;
 
+use network_impl::matrix_impl::LayerMatrix;
+
 /// A double precision dynamic vector for use with neural nets
 pub type F64Vector = DVector<f64>;
 
@@ -33,10 +35,6 @@ trait Layer {
     /// Outputs a vector with the output of each neuron propagating on the whole input
     /// Where the ith value is the response of the ith-neuron
     fn propagate(&self, inputs: &F64Vector) -> F64Vector;
-
-    fn new_random(&self, num_neurons: usize) -> Box<dyn Layer>;
-
-    fn new_from_weights(&self, weights: LayerWeights) -> Box<dyn Layer>;
 }
 
 impl NeuralNetwork {
@@ -81,7 +79,16 @@ impl NeuralNetwork {
     /// It assumes that the bias weight of each layer is included in the network topology, that is
     /// the neuron's individual bias are all summed to one bias neuron included in the input weights
     pub fn load_weights(weights: Vec<LayerWeights>) -> Self {
-        todo!()
+        let mut built_layers = Vec::new();
+
+        for layer_weights in weights {
+            let layer = LayerMatrix::new_from_weights(layer_weights);
+            let boxed: Box<dyn Layer> = Box::new(layer);
+            built_layers.push(boxed);
+        }
+        NeuralNetwork {
+            layers: built_layers,
+        }
     }
 }
 
@@ -98,6 +105,9 @@ mod tests {
 
     #[test]
     fn propagation_test() {
+
+        let layer_one_weights = vec![1.0]; 
+
         // unimplemented!();
     }
 

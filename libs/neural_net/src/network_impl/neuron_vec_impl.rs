@@ -21,14 +21,6 @@ impl Layer for NeuronVectorLayer {
                 .collect(),
         )
     }
-
-    fn new_random(&self, num_neurons: usize) -> Box<dyn Layer> {
-        todo!()
-    }
-
-    fn new_from_weights(&self, _: LayerWeights) -> Box<dyn Layer> {
-        todo!()
-    }
 }
 
 impl Neuron {
