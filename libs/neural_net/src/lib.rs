@@ -1,6 +1,7 @@
 mod activation_funcs;
 mod network_impl;
 use nalgebra::DVector;
+use rand::{rngs::OsRng, RngCore};
 
 use network_impl::matrix_impl::LayerMatrix;
 
@@ -71,8 +72,24 @@ impl NeuralNetwork {
     ///
     /// The example above creates a three layer neural net with 4 input neurons, 3 neurons in a hidden layer and a single output neuron
     ///
-    pub fn random(topology: &Vec<LayerTopology>) -> Self {
-        todo!()
+    pub fn random(topology: &[LayerTopology]) -> Self {
+        // we want networks of at least 1 hidden layer
+        assert!(topology.len() > 1);
+        let mut rng = OsRng;
+
+        let layers: Vec<Box<dyn Layer>> = topology
+            .windows(2)
+            .map(|adjacent_layers| {
+                let layer: Box<dyn Layer> = Box::new(LayerMatrix::new_random(
+                    adjacent_layers[0].num_neurons,
+                    adjacent_layers[1].num_neurons,
+                    &mut rng,
+                ));
+                layer
+            })
+            .collect();
+
+        NeuralNetwork { layers }
     }
 
     /// creates a brand new network using pre-determined weights given

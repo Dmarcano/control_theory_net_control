@@ -21,6 +21,22 @@ impl LayerMatrix {
             activation_func: Box::new(re_lu),
         }
     }
+
+    // the number of input neurons is the number of rows of the matrix.
+    // the number of output neurons is the number of columns inside of the matrix.
+    pub fn new_random(
+        input_neurons: usize,
+        output_neurons: usize,
+        rng: &mut dyn rand::RngCore,
+    ) -> Self {
+        // we add 1 to the number to add a bias neuron. We will make this the
+        // last row by always making the bias input be 1 on the last column of any input vectors
+        let num_input = input_neurons + 1;
+
+        let weights = vec![0; num_input * output_neurons];
+
+        todo!()
+    }
 }
 
 fn re_lu(val: f64) -> f64 {

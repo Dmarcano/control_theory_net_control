@@ -1,4 +1,4 @@
-use crate::{F64Vector, Layer, LayerWeights};
+use crate::{F64Vector, Layer};
 use nalgebra::DVector;
 
 struct NeuronVectorLayer {
