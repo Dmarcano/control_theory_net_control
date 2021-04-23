@@ -18,12 +18,12 @@ impl LayerMatrix {
         let mat = DMatrix::from_rows(row_vecs.as_ref());
         LayerMatrix {
             mat,
-            activation_func: Box::new(ReLu),
+            activation_func: Box::new(re_lu),
         }
     }
 }
 
-fn ReLu(val: f64) -> f64 {
+fn re_lu(val: f64) -> f64 {
     (val).max(0.0)
 }
 

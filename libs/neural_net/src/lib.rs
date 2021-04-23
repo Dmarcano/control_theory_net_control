@@ -105,8 +105,7 @@ mod tests {
 
     #[test]
     fn propagation_test() {
-
-        let layer_one_weights = vec![1.0]; 
+        let layer_one_weights = vec![1.0];
 
         // unimplemented!();
     }
