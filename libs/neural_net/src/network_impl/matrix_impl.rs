@@ -31,9 +31,9 @@ impl LayerMatrix {
     ) -> Self {
         // we add 1 to the number to add a bias neuron. We will make this the
         // last row by always making the bias input be 1 on the last column of any input vectors
-        let num_input = input_neurons + 1;
+        // let num_input = input_neurons + 1;
 
-        let weights = vec![0; num_input * output_neurons];
+        let weights = vec![0; input_neurons * output_neurons];
 
         todo!()
     }
