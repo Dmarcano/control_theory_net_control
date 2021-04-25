@@ -1,5 +1,6 @@
 use crate::{F64Vector, Layer, LayerWeights};
 use nalgebra::{DMatrix, DVector, RowDVector};
+use rand::Rng;
 
 pub struct LayerMatrix {
     mat: DMatrix<f64>,
@@ -29,13 +30,15 @@ impl LayerMatrix {
         output_neurons: usize,
         rng: &mut dyn rand::RngCore,
     ) -> Self {
-        // we add 1 to the number to add a bias neuron. We will make this the
-        // last row by always making the bias input be 1 on the last column of any input vectors
-        // let num_input = input_neurons + 1;
+        let weights: Vec<f64> = (0..input_neurons * output_neurons)
+            .map(|_| rng.gen_range(-1.0..=1.0))
+            .collect();
+        let mat = DMatrix::from_vec(input_neurons, output_neurons, weights);
 
-        let weights = vec![0; input_neurons * output_neurons];
-
-        todo!()
+        LayerMatrix {
+            mat,
+            activation_func: Box::new(re_lu),
+        }
     }
 }
 
