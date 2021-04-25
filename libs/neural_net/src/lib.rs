@@ -14,7 +14,7 @@ pub struct NeuralNetwork {
     // Expert neural-network packages create a set of optimal matrix operations
     // that severely speed up the operations so we add a trait object to signify that we may use
     // multiple implementations of such object
-    layers: Vec<Box<dyn Layer>>,
+    layers: Vec<LayerMatrix>,
 }
 
 /// A layer topology is simply the number of neurons per a single layer.
@@ -36,6 +36,8 @@ trait Layer {
     /// Outputs a vector with the output of each neuron propagating on the whole input
     /// Where the ith value is the response of the ith-neuron
     fn propagate(&self, inputs: &F64Vector) -> F64Vector;
+
+    fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64> + 'a>;
 }
 
 impl NeuralNetwork {
@@ -77,14 +79,14 @@ impl NeuralNetwork {
         assert!(topology.len() > 1);
         let mut rng = OsRng;
 
-        let layers: Vec<Box<dyn Layer>> = topology
+        let layers: Vec<LayerMatrix> = topology
             .windows(2)
             .map(|adjacent_layers| {
-                let layer: Box<dyn Layer> = Box::new(LayerMatrix::new_random(
+                let layer: LayerMatrix = LayerMatrix::new_random(
                     adjacent_layers[0].num_neurons,
                     adjacent_layers[1].num_neurons,
                     &mut rng,
-                ));
+                );
                 layer
             })
             .collect();
@@ -100,8 +102,7 @@ impl NeuralNetwork {
 
         for layer_weights in weights {
             let layer = LayerMatrix::new_from_weights(layer_weights);
-            let boxed: Box<dyn Layer> = Box::new(layer);
-            built_layers.push(boxed);
+            built_layers.push(layer);
         }
         NeuralNetwork {
             layers: built_layers,

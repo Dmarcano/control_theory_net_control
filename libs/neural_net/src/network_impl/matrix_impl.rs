@@ -56,7 +56,14 @@ impl Layer for LayerMatrix {
                 .iter()
                 .map(|val| (self.activation_func)(*val)),
         )
+
     }
+
+    fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64> + 'a> { 
+
+       todo!()
+    }
+
 }
 
 #[cfg(test)]
