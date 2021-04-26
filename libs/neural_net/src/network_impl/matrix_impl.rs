@@ -1,9 +1,9 @@
 use crate::{F64Vector, Layer, LayerWeights};
-use nalgebra::{DMatrix, DVector, RowDVector};
+use nalgebra::{DMatrix, RowDVector};
 use rand::Rng;
 
 pub struct LayerMatrix {
-    mat: DMatrix<f64>,
+    pub mat: DMatrix<f64>,
     activation_func: Box<dyn Fn(f64) -> f64>,
 }
 

@@ -16,6 +16,9 @@ pub struct NeuralNetwork {
     // multiple implementations of such object
     layers: Vec<LayerMatrix>,
 
+    /// The network outputs that correspond to each layer. Used for backpropagation calculations
+    outputs : Vec<F64Vector>,
+
     /// The networks learning rate when training using backpropagation
     pub learning_rate: f64,
 
@@ -61,10 +64,17 @@ impl NeuralNetwork {
 
     /// propagates forward the input throughout the network and outputs the output from the
     /// final layer
-    pub fn propagate(&self, inputs: F64Vector) -> F64Vector {
-        self.layers
+    pub fn propagate(&mut self, inputs: F64Vector) -> F64Vector {
+        let mut outputs = Vec::new(); 
+        let final_out = self.layers
             .iter()
-            .fold(inputs, |next_inputs, layer| layer.propagate(&next_inputs))
+            .fold(inputs, |next_inputs, layer| {
+                let out = layer.propagate(&next_inputs);
+                outputs.push(out.clone()); 
+                out
+            });
+            self.outputs = outputs; 
+            final_out
     }
 
     pub fn backprop(&mut self, err: f64) {}
@@ -96,6 +106,7 @@ impl NeuralNetwork {
         // we want networks of at least 1 hidden layer
         assert!(topology.len() > 1);
         let mut rng = OsRng;
+        let mut outputs = Vec::with_capacity(topology.len()); 
 
         let layers: Vec<LayerMatrix> = topology
             .windows(2)
@@ -105,6 +116,9 @@ impl NeuralNetwork {
                     adjacent_layers[1].num_neurons,
                     &mut rng,
                 );
+                // output neurons for backprop
+                let output_vec = F64Vector::from_vec(vec![0.0 ; adjacent_layers[1].num_neurons]);
+                outputs.push(output_vec);
                 layer
             })
             .collect();
@@ -121,6 +135,7 @@ impl NeuralNetwork {
         NeuralNetwork {
             layers,
             learning_rate,
+            outputs,
             lambda: regularization,
         }
     }
@@ -135,13 +150,23 @@ impl NeuralNetwork {
     /// * lambda : Regularization parameter should changes be needed
     pub fn load_weights(weights: Vec<LayerWeights>, alpha: f64, lambda: f64) -> Self {
         let mut built_layers = Vec::new();
+        let mut outputs = Vec::with_capacity(weights.len());
 
         for layer_weights in weights {
+            assert!(layer_weights.weights.len() > 0, format!("Expected a non-zero layer weight but was given {}",layer_weights.weights.len() ));
+            // each layer will output a 1x(num_cols) output so we create a vector with the length of each column 
+            let col_length = layer_weights.weights[0].len();
+            let output_vec = F64Vector::from_vec(vec![0.0; col_length]); 
+            outputs.push(output_vec); 
+            // now build the layer from the layer weights
             let layer = LayerMatrix::new_from_weights(layer_weights);
             built_layers.push(layer);
         }
+
+        // let outputs = vec![F64Vector::from_vec(), len()]; 
         NeuralNetwork {
             layers: built_layers,
+            outputs, 
             learning_rate: alpha,
             lambda,
         }
@@ -152,13 +177,12 @@ impl NeuralNetwork {
 mod tests {
     use crate::*;
 
-    #[test]
-    fn propagation_test() {
-        // normal prop
+
+    fn default_network() -> NeuralNetwork { 
         let layer_one_weights = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
         let layer_two_weights = vec![vec![0.5], vec![0.1]];
 
-        let net = NeuralNetwork::load_weights(
+        NeuralNetwork::load_weights(
             vec![
                 LayerWeights {
                     weights: layer_one_weights,
@@ -169,7 +193,32 @@ mod tests {
             ],
             0.1,
             0.1,
-        );
+        )
+    }
+
+    #[test]
+    // test if our intermediate network outputs are what we expect them to be
+    fn output_storage_test() {
+        let mut net = default_network(); 
+
+        let input_one = RowDVector::from_vec(vec![-0.5, 1.5, 2.0]);
+
+        let _ = net.propagate(input_one); 
+        let expected_output_final =F64Vector::from_vec(vec![8.7]); // expected value of final layer output 
+        let expected_output_second = F64Vector::from_vec( vec![14.0, 17.0]); // expected value of the hidden layer 
+
+        let expected = vec![expected_output_second, expected_output_final];
+
+        net.outputs.as_slice()
+        .iter()
+        .zip(expected.as_slice().iter())
+        .for_each(|(lhs, rhs)| assert!(approx::relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
+    }
+
+    #[test]
+    fn propagation_test() {
+        // normal prop
+        let mut net = default_network();
 
         let input = RowDVector::from_vec(vec![-0.5, 1.5, 2.0]);
         let expected = 8.7;
