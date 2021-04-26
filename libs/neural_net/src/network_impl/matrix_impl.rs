@@ -48,22 +48,17 @@ fn re_lu(val: f64) -> f64 {
 
 impl Layer for LayerMatrix {
     fn propagate(&self, inputs: &F64Vector) -> F64Vector {
-        let out = inputs.transpose() * &self.mat;
+        let out = inputs * &self.mat;
 
-        DVector::from_iterator(
+        RowDVector::from_iterator(
             out.len(),
-            out.transpose()
-                .iter()
-                .map(|val| (self.activation_func)(*val)),
+            out.iter().map(|val| (self.activation_func)(*val)),
         )
-
     }
 
-    fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64> + 'a> { 
-
-       todo!()
+    fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64> + 'a> {
+        todo!()
     }
-
 }
 
 #[cfg(test)]
@@ -71,7 +66,7 @@ mod tests {
     use super::{Layer, LayerMatrix};
     use crate::LayerWeights;
     use approx::relative_eq;
-    use nalgebra::DVector;
+    use nalgebra::RowDVector;
 
     #[test]
     fn new_random_test() {}
@@ -95,7 +90,7 @@ mod tests {
 
     #[test]
     fn propagation_test() {
-        let input = DVector::from_vec(vec![5.0, 1.0]);
+        let input = RowDVector::from_vec(vec![5.0, 1.0]);
         let weights = vec![vec![0.1, 0.2, 0.3], vec![0.4, 0.5, 0.6]];
         let layer = LayerMatrix::new_from_weights(LayerWeights { weights });
 

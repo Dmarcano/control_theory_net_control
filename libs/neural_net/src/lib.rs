@@ -1,12 +1,12 @@
 mod activation_funcs;
 mod network_impl;
-use nalgebra::DVector;
+use nalgebra::{DVector, RowDVector};
 use rand::{rngs::OsRng, RngCore};
 
 use network_impl::matrix_impl::LayerMatrix;
 
 /// A double precision dynamic vector for use with neural nets
-pub type F64Vector = DVector<f64>;
+pub type F64Vector = RowDVector<f64>;
 
 /// A network of neurons
 pub struct NeuralNetwork {
@@ -44,7 +44,7 @@ impl NeuralNetwork {
     /// propagates forward the input throughout the network and outputs the output from the
     /// final layer
     pub fn propagate_vec(&self, inputs: Vec<f64>) -> F64Vector {
-        let transform = DVector::from_vec(inputs);
+        let transform = RowDVector::from_vec(inputs);
 
         self.layers.iter().fold(transform, |next_inputs, layer| {
             layer.propagate(&next_inputs)

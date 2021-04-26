@@ -1,5 +1,5 @@
 use crate::{F64Vector, Layer};
-use nalgebra::DVector;
+use nalgebra::RowDVector;
 
 struct NeuronVectorLayer {
     neurons: Vec<Neuron>,
@@ -14,7 +14,7 @@ struct Neuron {
 
 impl Layer for NeuronVectorLayer {
     fn propagate(&self, inputs: &F64Vector) -> F64Vector {
-        DVector::from_vec(
+        RowDVector::from_vec(
             self.neurons
                 .iter()
                 .map(|neuron| neuron.propagate(&inputs))
@@ -22,10 +22,9 @@ impl Layer for NeuronVectorLayer {
         )
     }
 
-    fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64>> { 
+    fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64>> {
         todo!()
     }
-
 }
 
 impl Neuron {
