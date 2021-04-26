@@ -59,6 +59,10 @@ impl Layer for LayerMatrix {
     fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64> + 'a> {
         todo!()
     }
+
+    fn backprop(&mut self, err: f64) -> f64 {
+        todo!()
+    }
 }
 
 #[cfg(test)]

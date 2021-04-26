@@ -25,6 +25,10 @@ impl Layer for NeuronVectorLayer {
     fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64>> {
         todo!()
     }
+
+    fn backprop(&mut self, err: f64) -> f64 {
+        todo!()
+    }
 }
 
 impl Neuron {
