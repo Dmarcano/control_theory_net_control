@@ -16,8 +16,10 @@ pub struct NeuralNetwork {
     // multiple implementations of such object
     layers: Vec<LayerMatrix>,
 
+    /// The networks learning rate when training using backpropagation
     pub learning_rate: f64,
 
+    /// The networks regularization parameter. Penalizes large weigth values
     pub lambda: f64,
 }
 
@@ -71,6 +73,8 @@ impl NeuralNetwork {
     ///
     /// ## Arguments
     /// * topology - A vector of LayerToplogies which outlines the length of eahc layer in the network
+    /// * alpha - The network's learning rate and weight change on gradient descent. Reccomended to keep between 0 and 1. 
+    /// * lambda - A regularization parameter. Penalizes large weight values. Defaults to 0 if None is provided.
     ///
     /// ## Example
     /// ```
@@ -110,7 +114,7 @@ impl NeuralNetwork {
             Some(val) => val,
         };
         let regularization = match lambda {
-            None => rng.gen_range(0.0..=0.1),
+            None => 0.0,
             Some(val) => val,
         };
 
@@ -124,6 +128,11 @@ impl NeuralNetwork {
     /// creates a brand new network using pre-determined weights given
     /// It assumes that the bias weight of each layer is included in the network topology, that is
     /// the neuron's individual bias are all summed to one bias neuron included in the input weights
+    /// 
+    /// ## Arguments 
+    /// * weights: Vector of LayerWeighst that are used to describe the network
+    /// * alpha : Learning rate should changes be needed 
+    /// * lambda : Regularization parameter should changes be needed
     pub fn load_weights(weights: Vec<LayerWeights>, alpha: f64, lambda: f64) -> Self {
         let mut built_layers = Vec::new();
 
