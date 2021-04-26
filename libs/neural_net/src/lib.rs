@@ -51,6 +51,8 @@ impl NeuralNetwork {
         })
     }
 
+    /// propagates forward the input throughout the network and outputs the output from the
+    /// final layer
     pub fn propagate(&self, inputs: F64Vector) -> F64Vector {
         self.layers
             .iter()
@@ -72,7 +74,11 @@ impl NeuralNetwork {
     /// let net = NeuralNetwork::random(topology);
     /// ```
     ///
-    /// The example above creates a three layer neural net with 4 input neurons, 3 neurons in a hidden layer and a single output neuron
+    /// The example above creates a three layer neural net with 4 input neurons, 3 neurons in a hidden layer and a single output neuron. 
+    /// 
+    /// ## Note on Bias 
+    /// The network does not automatically add a bias neuron and leaves
+    /// it to users to augment input vectors to include bias terms in their dataset
     ///
     pub fn random(topology: &[LayerTopology]) -> Self {
         // we want networks of at least 1 hidden layer
@@ -112,6 +118,7 @@ impl NeuralNetwork {
 
 #[cfg(test)]
 mod tests {
+    use crate::*;
 
     #[test]
     fn new_random_test() {}
@@ -123,13 +130,25 @@ mod tests {
 
     #[test]
     fn propagation_test() {
-        let layer_one_weights = vec![1.0];
 
-        // unimplemented!();
-    }
+        // normal prop
+        let layer_one_weights = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
+        let layer_two_weights = vec![vec![0.5], vec![0.1]]; 
+        let layer_three_weights = vec![vec![1.0]]; 
 
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+        let net = NeuralNetwork::load_weights(
+            vec![
+                LayerWeights{weights : layer_one_weights}, 
+                LayerWeights{weights : layer_two_weights}, 
+                LayerWeights{weights : layer_three_weights}
+            ]
+        );
+
+        let input = RowDVector::from_vec(vec![-0.5, 1.5, 2.0]); 
+        let expected = 8.7;
+        
+        let out = net.propagate(input); 
+        
+        assert_eq!(out[0], expected); 
     }
 }
