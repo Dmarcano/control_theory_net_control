@@ -17,7 +17,7 @@ pub struct NeuralNetwork {
     layers: Vec<LayerMatrix>,
 
     /// The network outputs that correspond to each layer. Used for backpropagation calculations
-    outputs : Vec<F64Vector>,
+    outputs: Vec<F64Vector>,
 
     /// The networks learning rate when training using backpropagation
     pub learning_rate: f64,
@@ -30,7 +30,7 @@ pub struct NeuralNetwork {
 #[derive(Copy, Clone, Debug)]
 pub struct LayerTopology {
     /// The number of neurons in one layer
-    num_neurons: usize,
+    pub num_neurons: usize,
 }
 
 pub struct LayerWeights {
@@ -65,35 +65,40 @@ impl NeuralNetwork {
     /// propagates forward the input throughout the network and outputs the output from the
     /// final layer
     pub fn propagate(&mut self, inputs: F64Vector) -> F64Vector {
-        let mut outputs = Vec::new(); 
-        let final_out = self.layers
-            .iter()
-            .fold(inputs, |next_inputs, layer| {
-                let out = layer.propagate(&next_inputs);
-                outputs.push(out.clone()); 
-                out
-            });
-            self.outputs = outputs; 
-            final_out
+        let mut outputs = Vec::new();
+        let final_out = self.layers.iter().fold(inputs, |next_inputs, layer| {
+            let out = layer.propagate(&next_inputs);
+            outputs.push(out.clone());
+            out
+        });
+        self.outputs = outputs;
+        final_out
     }
 
-    pub fn backprop(&mut self, err: f64) {}
+    /// Recomputes network weights by propagation an error vector along with the
+    ///
+    /// ### Note
+    /// Backpropagation works
+    pub fn backprop(&mut self, err: F64Vector) {}
 
     /// creates a brand new network using random weights and biases
     ///
     /// ## Arguments
     /// * topology - A vector of LayerToplogies which outlines the length of eahc layer in the network
-    /// * alpha - The network's learning rate and weight change on gradient descent. Reccomended to keep between 0 and 1. 
+    /// * alpha - The network's learning rate and weight change on gradient descent. Reccomended to keep between 0 and 1.
     /// * lambda - A regularization parameter. Penalizes large weight values. Defaults to 0 if None is provided.
     ///
     /// ## Example
     /// ```
+    /// use neural_net::*;
+    /// 
     /// let topology = vec![
-    ///  LayerTopology{4},
-    ///  LayerTopology{3},
-    ///  LayerTopology{1}];
-    ///
-    /// let net = NeuralNetwork::random(topology);
+    ///  LayerTopology{num_neurons : 4},
+    ///  LayerTopology{num_neurons: 3},
+    ///  LayerTopology{num_neurons: 1}];
+    /// 
+    /// //create a network with 3 layers. 4 input neurons, 3 hidden neurons, 1 output neuron 
+    /// let net = NeuralNetwork::random(&topology, Some(0.1), None);
     /// ```
     ///
     /// The example above creates a three layer neural net with 4 input neurons, 3 neurons in a hidden layer and a single output neuron.
@@ -106,7 +111,7 @@ impl NeuralNetwork {
         // we want networks of at least 1 hidden layer
         assert!(topology.len() > 1);
         let mut rng = OsRng;
-        let mut outputs = Vec::with_capacity(topology.len()); 
+        let mut outputs = Vec::with_capacity(topology.len());
 
         let layers: Vec<LayerMatrix> = topology
             .windows(2)
@@ -117,7 +122,7 @@ impl NeuralNetwork {
                     &mut rng,
                 );
                 // output neurons for backprop
-                let output_vec = F64Vector::from_vec(vec![0.0 ; adjacent_layers[1].num_neurons]);
+                let output_vec = F64Vector::from_vec(vec![0.0; adjacent_layers[1].num_neurons]);
                 outputs.push(output_vec);
                 layer
             })
@@ -143,30 +148,34 @@ impl NeuralNetwork {
     /// creates a brand new network using pre-determined weights given
     /// It assumes that the bias weight of each layer is included in the network topology, that is
     /// the neuron's individual bias are all summed to one bias neuron included in the input weights
-    /// 
-    /// ## Arguments 
+    ///
+    /// ## Arguments
     /// * weights: Vector of LayerWeighst that are used to describe the network
-    /// * alpha : Learning rate should changes be needed 
+    /// * alpha : Learning rate should changes be needed
     /// * lambda : Regularization parameter should changes be needed
     pub fn load_weights(weights: Vec<LayerWeights>, alpha: f64, lambda: f64) -> Self {
         let mut built_layers = Vec::new();
         let mut outputs = Vec::with_capacity(weights.len());
 
         for layer_weights in weights {
-            assert!(layer_weights.weights.len() > 0, format!("Expected a non-zero layer weight but was given {}",layer_weights.weights.len() ));
-            // each layer will output a 1x(num_cols) output so we create a vector with the length of each column 
+            assert!(
+                layer_weights.weights.len() > 0,
+                "Expected a non-zero layer weight but was given {}",
+                layer_weights.weights.len()
+            );
+            // each layer will output a 1x(num_cols) output so we create a vector with the length of each column
             let col_length = layer_weights.weights[0].len();
-            let output_vec = F64Vector::from_vec(vec![0.0; col_length]); 
-            outputs.push(output_vec); 
+            let output_vec = F64Vector::from_vec(vec![0.0; col_length]);
+            outputs.push(output_vec);
             // now build the layer from the layer weights
             let layer = LayerMatrix::new_from_weights(layer_weights);
             built_layers.push(layer);
         }
 
-        // let outputs = vec![F64Vector::from_vec(), len()]; 
+        // let outputs = vec![F64Vector::from_vec(), len()];
         NeuralNetwork {
             layers: built_layers,
-            outputs, 
+            outputs,
             learning_rate: alpha,
             lambda,
         }
@@ -177,8 +186,7 @@ impl NeuralNetwork {
 mod tests {
     use crate::*;
 
-
-    fn default_network() -> NeuralNetwork { 
+    fn default_network() -> NeuralNetwork {
         let layer_one_weights = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
         let layer_two_weights = vec![vec![0.5], vec![0.1]];
 
@@ -199,20 +207,21 @@ mod tests {
     #[test]
     // test if our intermediate network outputs are what we expect them to be
     fn output_storage_test() {
-        let mut net = default_network(); 
+        let mut net = default_network();
 
         let input_one = RowDVector::from_vec(vec![-0.5, 1.5, 2.0]);
 
-        let _ = net.propagate(input_one); 
-        let expected_output_final =F64Vector::from_vec(vec![8.7]); // expected value of final layer output 
-        let expected_output_second = F64Vector::from_vec( vec![14.0, 17.0]); // expected value of the hidden layer 
+        let _ = net.propagate(input_one);
+        let expected_output_final = F64Vector::from_vec(vec![8.7]); // expected value of final layer output
+        let expected_output_second = F64Vector::from_vec(vec![14.0, 17.0]); // expected value of the hidden layer
 
         let expected = vec![expected_output_second, expected_output_final];
 
-        net.outputs.as_slice()
-        .iter()
-        .zip(expected.as_slice().iter())
-        .for_each(|(lhs, rhs)| assert!(approx::relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
+        net.outputs
+            .as_slice()
+            .iter()
+            .zip(expected.as_slice().iter())
+            .for_each(|(lhs, rhs)| assert!(approx::relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
     }
 
     #[test]
