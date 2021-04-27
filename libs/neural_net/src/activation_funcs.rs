@@ -1,13 +1,24 @@
 
-
-pub trait ActivationFunction {
-    fn activation(&self, input: f64) -> f64;
-    fn derivative(&self, input: f64) -> f64;
+#[derive(Debug)]
+pub enum ActivationFunction { 
+    ReLu, 
+    Sigmoid, 
+    TanH,
 }
 
-pub struct ReLu;
-pub struct Sigmoid;
-pub struct TanH;
+pub(crate) struct ReLu;
+pub(crate) struct Sigmoid;
+pub(crate) struct TanH;
+
+pub(crate) fn get_functions(func : ActivationFunction) -> (&'static dyn Fn(f64)-> f64, &'static dyn Fn(f64) -> f64){ 
+
+    match func {
+        ActivationFunction::ReLu => {
+            return (&ReLu::activation, &ReLu::derivative)
+        }
+        other => {unimplemented!("Still have to implement {:?} activation function", other)}
+    }
+}
 
 impl ReLu {
     
@@ -21,6 +32,11 @@ impl ReLu {
             _ => 0.0,
         }
     }
+
+}
+
+impl Sigmoid { 
+
 }
 
 
