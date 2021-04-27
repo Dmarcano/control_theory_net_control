@@ -66,6 +66,8 @@ impl NeuralNetwork {
     /// final layer
     pub fn propagate(&mut self, inputs: F64Vector) -> F64Vector {
         let mut outputs = Vec::new();
+        outputs.push(inputs.clone());
+
         let final_out = self.layers.iter().fold(inputs, |next_inputs, layer| {
             let out = layer.propagate(&next_inputs);
             outputs.push(out.clone());
@@ -102,11 +104,12 @@ impl NeuralNetwork {
         // the first previous layer is a layer of 1's so that the output layer is not 
         // changed 
         let mut prev_layer_weight =  &nalgebra::DMatrix::repeat(
-            self.outputs[self.layers.len() - 1].nrows(),
-            self.outputs[self.layers.len() - 1].ncols(),
+            self.outputs[self.outputs.len() - 1].nrows(),
+            self.outputs[self.outputs.len() - 1].ncols(),
             1.0
         );
 
+        // using the index 
         for (layer, output) in self.layers.iter_mut().zip(self.outputs.as_slice().windows(2)).rev() { 
 
             // 1. let the layer err be the transpose previous weights times the previous delta
@@ -118,8 +121,12 @@ impl NeuralNetwork {
             // 3. use the output derivative and the layer err to find the delta
             let delta = layer_err.component_mul(&output_deriv);
 
+            // the first layer input is its own output
+            
+
             // 4. use the delta and current layer input to find the weight change necessary
-            let layer_adjustment = &output[0].transpose() * &delta; //todo!();
+            let debug = &output[0];
+            let layer_adjustment = debug.transpose() *  &delta ; //todo!();
 
             prev_delta = delta; 
             prev_layer_weight = & layer.mat; 
@@ -261,14 +268,14 @@ mod tests {
 
         let input_one = RowDVector::from_vec(vec![-0.5, 1.5, 2.0]);
 
-        let _ = net.propagate(input_one);
+        let _ = net.propagate(input_one.clone());
         let expected_output_final = F64Vector::from_vec(vec![8.7]); // expected value of final layer output
         let expected_output_second = F64Vector::from_vec(vec![14.0, 17.0]); // expected value of the hidden layer
 
-        let expected = vec![expected_output_second, expected_output_final];
+        let expected = vec![input_one, expected_output_second, expected_output_final];
 
         net.outputs
-            .as_slice()
+            .as_slice() 
             .iter()
             .zip(expected.as_slice().iter())
             .for_each(|(lhs, rhs)| assert!(approx::relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
