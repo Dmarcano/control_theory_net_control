@@ -8,6 +8,13 @@ use network_impl::matrix_impl::LayerMatrix;
 /// A double precision dynamic vector for use with neural nets
 pub type F64Vector = RowDVector<f64>;
 
+pub fn squared_err(rhs : &F64Vector, lhs : &F64Vector) -> F64Vector { 
+    // 1/2 * SSE for the target and output
+    let diff = rhs - lhs; 
+    let err = diff.component_mul(&diff);
+    err.map(|val| val/2.0)
+}
+
 /// A network of neurons
 pub struct NeuralNetwork {
     // the implementation of the layer does not matter.
@@ -97,9 +104,11 @@ impl NeuralNetwork {
         // 
 
         let mut weight_changes = Vec::new(); 
+        let alpha = self.learning_rate;
 
         // t
-        let mut prev_delta = err; 
+        
+            let mut prev_delta = err; 
         
         // the first previous layer is a layer of 1's so that the output layer is not 
         // changed 
@@ -133,9 +142,11 @@ impl NeuralNetwork {
 
             weight_changes.push(layer_adjustment);
         }
-
-        todo!("Update the network weights");
-
+        
+        for (weights, weight_change) in self.layers.iter_mut().zip(weight_changes.iter().rev()) { 
+            let regulated = weight_change.map(|val| val * alpha); 
+            weights.mat += regulated;
+        }
     }
 
     /// creates a brand new network using random weights and biases
@@ -295,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn back_prop_test() {
+    fn back_prop_test_no_check() {
         let mut net = default_network(); 
 
         let input = RowDVector::from_vec(vec![-0.5, 1.5, 2.0]);
@@ -304,12 +315,46 @@ mod tests {
         let target =  RowDVector::from_vec(vec![5.0]);
 
         // 1/2 * SSE for the target and output
-        let diff = (&target - &out); 
+        let diff = &target - &out; 
         let err = diff.component_mul(&diff);
         let err = err.map(|val| val/2.0);
 
         net.backprop(err); 
+    }
 
-        unimplemented!("basically this test");
+    #[test]
+    fn web_backprop_test() { 
+        let layer_one_weights = vec![vec![0.11, 0.12], vec![0.21, 0.08]];
+        let layer_two_weights = vec![vec![0.14], vec![0.15]];
+
+        let mut net = NeuralNetwork::load_weights(
+            vec![
+                LayerWeights {
+                    weights: layer_one_weights,
+                },
+                LayerWeights {
+                    weights: layer_two_weights,
+                },
+            ],
+            0.05,
+            0.1,
+        );
+
+        let input = RowDVector::from_vec(vec![2.0, 3.0]);
+        let target =  RowDVector::from_vec(vec![1.0]);
+
+        let out = net.propagate(input.clone());
+
+        // 1/2 * SSE for the target and output
+        let diff = &target - &out; 
+        let squared_error = squared_err(&target, &out);
+        net.backprop(diff); 
+
+        let second_out = net.propagate(input);
+
+        let second_squared_err = squared_err(&target, &second_out); 
+
+        assert!(squared_error > second_squared_err);
+
     }
 }
