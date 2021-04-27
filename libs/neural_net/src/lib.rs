@@ -79,7 +79,48 @@ impl NeuralNetwork {
     ///
     /// ### Note
     /// Backpropagation works
-    pub fn backprop(&mut self, err: F64Vector) {}
+    pub fn backprop(&mut self, err: F64Vector) {
+
+        // for the output layer the input
+        // 1. take the error vector
+        // 2. take hadamard product of err by derivative of current layer output => call this delta 
+        // 3. multiply the input to the current layer (transposed) by delta => call this change_weights
+        // 4. add assign the change_weights times learning_rate to the network weights 
+
+        // for every single hidden layer
+        // 1. Take the previous layers delta 
+        // 2. multiply it by the previous layer weigts (transpose) => new error vector
+        // 3. hadamard product of err and derivative of the output => call this delta 
+        // 4. multiply the delta by the output of the hidden layer
+        // 
+
+        // t
+        let mut prev_delta = & err; 
+        
+        // the first previous layer is a layer of 1's so that the output layer is not 
+        // changed 
+        let prev_layer_weight = & nalgebra::DMatrix::repeat(
+            self.layers[self.layers.len() - 1].mat.nrows(),
+            self.layers[self.layers.len() - 1].mat.ncols(),
+            1.0
+        );
+
+        for (layer, output) in self.layers.iter_mut().zip(self.outputs.iter_mut()).rev() { 
+
+            // 1. let the layer err be the transpose previous weights times the previous delta
+            let layer_err =  prev_delta * prev_layer_weight.transpose() ; 
+
+            // 2. create the layer output 
+            let output_deriv = todo!();
+
+            // 3. use the output derivative and the current weights to find the delta
+            let delta = todo!();
+
+            // 4. use the delta and layer output to find the weight change necessary
+            let layer_adjustment = todo!();
+        }
+
+    }
 
     /// creates a brand new network using random weights and biases
     ///
@@ -235,5 +276,24 @@ mod tests {
         let out = net.propagate(input);
 
         assert_eq!(out[0], expected);
+    }
+
+    #[test]
+    fn back_prop_test() {
+        let mut net = default_network(); 
+
+        let input = RowDVector::from_vec(vec![-0.5, 1.5, 2.0]);
+        let out = net.propagate(input);
+
+        let target =  RowDVector::from_vec(vec![5.0]);
+
+        // 1/2 * SSE for the target and output
+        let diff = (&target - &out); 
+        let err = diff.component_mul(&diff);
+        let err = err.map(|val| val/2.0);
+
+        net.backprop(err); 
+
+        unimplemented!("basically this test");
     }
 }
