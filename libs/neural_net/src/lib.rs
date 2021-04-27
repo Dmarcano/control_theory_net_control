@@ -94,31 +94,40 @@ impl NeuralNetwork {
         // 4. multiply the delta by the output of the hidden layer
         // 
 
+        let mut weight_changes = Vec::new(); 
+
         // t
-        let mut prev_delta = & err; 
+        let mut prev_delta = err; 
         
         // the first previous layer is a layer of 1's so that the output layer is not 
         // changed 
-        let prev_layer_weight = & nalgebra::DMatrix::repeat(
-            self.layers[self.layers.len() - 1].mat.nrows(),
-            self.layers[self.layers.len() - 1].mat.ncols(),
+        let mut prev_layer_weight =  &nalgebra::DMatrix::repeat(
+            self.outputs[self.layers.len() - 1].nrows(),
+            self.outputs[self.layers.len() - 1].ncols(),
             1.0
         );
 
-        for (layer, output) in self.layers.iter_mut().zip(self.outputs.iter_mut()).rev() { 
+        for (layer, output) in self.layers.iter_mut().zip(self.outputs.as_slice().windows(2)).rev() { 
 
             // 1. let the layer err be the transpose previous weights times the previous delta
-            let layer_err =  prev_delta * prev_layer_weight.transpose() ; 
+            let layer_err =  &prev_delta * prev_layer_weight.transpose() ; 
 
             // 2. create the layer output 
-            let output_deriv = todo!();
+            let output_deriv = output[1].map(|val| activation_funcs::ReLu::derivative(val));
 
-            // 3. use the output derivative and the current weights to find the delta
-            let delta = todo!();
+            // 3. use the output derivative and the layer err to find the delta
+            let delta = layer_err.component_mul(&output_deriv);
 
-            // 4. use the delta and layer output to find the weight change necessary
-            let layer_adjustment = todo!();
+            // 4. use the delta and current layer input to find the weight change necessary
+            let layer_adjustment = &output[0].transpose() * &delta; //todo!();
+
+            prev_delta = delta; 
+            prev_layer_weight = & layer.mat; 
+
+            weight_changes.push(layer_adjustment);
         }
+
+        todo!("Update the network weights");
 
     }
 

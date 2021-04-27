@@ -22,11 +22,11 @@ pub(crate) fn get_functions(func : ActivationFunction) -> (&'static dyn Fn(f64)-
 
 impl ReLu {
     
-    fn activation(input: f64) -> f64 {
+    pub fn activation(input: f64) -> f64 {
         input.max(0.0)
     }
 
-    fn derivative(input: f64) -> f64 {
+    pub fn derivative(input: f64) -> f64 {
         match input {
             val if val > 0.0 => 1.0,
             _ => 0.0,
