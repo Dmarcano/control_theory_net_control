@@ -23,7 +23,7 @@ pub(crate) fn get_functions(func : ActivationFunction) -> (&'static dyn Fn(f64)-
 impl ReLu {
     
     pub fn activation(input: f64) -> f64 {
-        input.max(0.0)
+        input.max(0.01*input)
     }
 
     pub fn derivative(input: f64) -> f64 {
@@ -36,7 +36,9 @@ impl ReLu {
 }
 
 impl Sigmoid { 
-
+    pub fn activation(input: f64) -> f64 { 
+        1.0/(1.0 + (-1.0*input).exp())
+    }
 }
 
 

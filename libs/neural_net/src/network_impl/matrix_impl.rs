@@ -1,4 +1,5 @@
 use crate::{F64Vector, Layer, LayerWeights};
+use crate::activation_funcs;
 use nalgebra::{DMatrix, RowDVector};
 use rand::Rng;
 
@@ -19,7 +20,7 @@ impl LayerMatrix {
         let mat = DMatrix::from_rows(row_vecs.as_ref());
         LayerMatrix {
             mat,
-            activation_func: Box::new(re_lu),
+            activation_func: Box::new(activation_funcs::ReLu::activation),
         }
     }
 
@@ -37,14 +38,12 @@ impl LayerMatrix {
 
         LayerMatrix {
             mat,
-            activation_func: Box::new(re_lu),
+            activation_func: Box::new(activation_funcs::ReLu::activation),
         }
     }
 }
 
-fn re_lu(val: f64) -> f64 {
-    (val).max(0.0)
-}
+
 
 impl Layer for LayerMatrix {
     fn propagate(&self, inputs: &F64Vector) -> F64Vector {

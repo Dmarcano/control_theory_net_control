@@ -69,7 +69,7 @@ impl NeuralNetwork {
     /// propagates forward the input throughout the network and outputs the output from the
     /// final layer
     pub fn propagate(&mut self, inputs: F64Vector) -> F64Vector {
-        let mut outputs = Vec::new();
+        let mut outputs = Vec::with_capacity(self.outputs.len());
         outputs.push(inputs.clone());
 
         let final_out = self.layers.iter().fold(inputs, |next_inputs, layer| {
@@ -77,7 +77,10 @@ impl NeuralNetwork {
             outputs.push(out.clone());
             out
         });
-        self.outputs = outputs;
+        // self.outputs = outputs;
+        self.outputs = self.outputs.iter_mut().zip(outputs.iter_mut())
+        .map(|(curr_grad, delta_grad)| curr_grad.clone() + delta_grad.clone())
+        .collect();
         final_out
     }
 
@@ -144,6 +147,9 @@ impl NeuralNetwork {
             let regulated = weight_change.map(|val| val * alpha); 
             weights.mat += regulated;
         }
+
+        // 0-out the outputs after backpropping
+        self.outputs.iter_mut().for_each(|mat| mat.apply(|val| val * 0.0)); 
     }
 
     /// creates a brand new network using random weights and biases
@@ -269,7 +275,7 @@ mod tests {
         )
     }
 
-    // #[test]
+    #[test]
     // test if our intermediate network outputs are what we expect them to be
     fn output_storage_test() {
         let mut net = default_network();
@@ -289,7 +295,7 @@ mod tests {
             .for_each(|(lhs, rhs)| assert!(approx::relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
     }
 
-    // #[test]
+    #[test]
     fn propagation_test() {
         // normal prop
         let mut net = default_network();
@@ -302,7 +308,7 @@ mod tests {
         assert_eq!(out[0], expected);
     }
 
-    // #[test]
+    #[test]
     fn back_prop_test_no_check() {
         let mut net = default_network(); 
 
@@ -319,7 +325,7 @@ mod tests {
         net.backprop(err); 
     }
 
-    // #[test]
+    #[test]
     fn web_backprop_test() { 
         let layer_one_weights = vec![vec![0.11, 0.12], vec![0.21, 0.08]];
         let layer_two_weights = vec![vec![0.14], vec![0.15]];
@@ -356,7 +362,7 @@ mod tests {
     }
 
     #[test]
-    fn main() { 
+    fn xor_test() { 
         let inputs = vec![
             vec![1.0, -1.0, -1.0], 
             vec![1.0, -1.0, 1.0], 
@@ -386,11 +392,20 @@ mod tests {
             0.05,
             0.1,
         );
+
+        // let mut net = NeuralNetwork::random(
+        //     &[
+        //         LayerTopology { num_neurons : 3}, 
+        //         LayerTopology { num_neurons : 2},
+        //         LayerTopology { num_neurons : 1}
+        //     ], Some(0.1),Some(0.05));
     
         let tolerance = 0.1; 
         let num_epocs = 100; 
     
         let mut can_stop = false; 
+
+        let mut epoch_err = 0.0; 
     
         for i in 0..num_epocs { 
             println!("Starting training epoch {}", i);
@@ -399,13 +414,15 @@ mod tests {
                 let out = net.propagate_vec(input_vec.to_vec());
                 let diff = target - &out; 
     
-                if diff[0].abs() >= tolerance { 
-                    can_stop = true; 
-                }
-    
-                println!("Absolute Error at iteration {} is {}", i ,diff[0].abs());
+                epoch_err += diff[0].abs(); 
                 net.backprop(diff); 
             }
+            println!("Absolute Error at iteration {} is {}", i ,epoch_err);
+
+            if epoch_err <= tolerance { 
+                can_stop = true; 
+            }
+            epoch_err = 0.0; 
         };
     
         if !can_stop { 
