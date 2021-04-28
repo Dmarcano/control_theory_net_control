@@ -61,12 +61,9 @@ trait Layer {
 impl NeuralNetwork {
     /// propagates forward the input throughout the network and outputs the output from the
     /// final layer
-    pub fn propagate_vec(&self, inputs: Vec<f64>) -> F64Vector {
+    pub fn propagate_vec(&mut self, inputs: Vec<f64>) -> F64Vector {
         let transform = RowDVector::from_vec(inputs);
-
-        self.layers.iter().fold(transform, |next_inputs, layer| {
-            layer.propagate(&next_inputs)
-        })
+        self.propagate(transform)
     }
 
     /// propagates forward the input throughout the network and outputs the output from the
@@ -272,7 +269,7 @@ mod tests {
         )
     }
 
-    #[test]
+    // #[test]
     // test if our intermediate network outputs are what we expect them to be
     fn output_storage_test() {
         let mut net = default_network();
@@ -292,7 +289,7 @@ mod tests {
             .for_each(|(lhs, rhs)| assert!(approx::relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
     }
 
-    #[test]
+    // #[test]
     fn propagation_test() {
         // normal prop
         let mut net = default_network();
@@ -305,7 +302,7 @@ mod tests {
         assert_eq!(out[0], expected);
     }
 
-    #[test]
+    // #[test]
     fn back_prop_test_no_check() {
         let mut net = default_network(); 
 
@@ -322,7 +319,7 @@ mod tests {
         net.backprop(err); 
     }
 
-    #[test]
+    // #[test]
     fn web_backprop_test() { 
         let layer_one_weights = vec![vec![0.11, 0.12], vec![0.21, 0.08]];
         let layer_two_weights = vec![vec![0.14], vec![0.15]];
@@ -356,5 +353,64 @@ mod tests {
 
         assert!(squared_error > second_squared_err);
 
+    }
+
+    #[test]
+    fn main() { 
+        let inputs = vec![
+            vec![1.0, -1.0, -1.0], 
+            vec![1.0, -1.0, 1.0], 
+            vec![1.0,1.0, -1.0], 
+            vec![1.0, 1.0, 1.0]
+        ];
+    
+        let targets = vec! [ 
+            F64Vector::from_vec(vec![-1.0]), 
+            F64Vector::from_vec (vec![1.0]), 
+            F64Vector::from_vec (vec![1.0]), 
+            F64Vector::from_vec (vec![-1.0])
+        ];
+    
+        let layer_one_weights = vec![ vec![0.14, -0.07, 0.10], vec![0.13, -0.23, 0.12], vec![-0.23, 0.11, 0.03]]; 
+        let layer_two_weights = vec![vec![0.08], vec![0.04], vec![-0.05]];
+    
+        let mut net = NeuralNetwork::load_weights(
+            vec![
+                LayerWeights {
+                    weights: layer_one_weights,
+                },
+                LayerWeights {
+                    weights: layer_two_weights,
+                },
+            ],
+            0.05,
+            0.1,
+        );
+    
+        let tolerance = 0.1; 
+        let num_epocs = 100; 
+    
+        let mut can_stop = false; 
+    
+        for i in 0..num_epocs { 
+            println!("Starting training epoch {}", i);
+    
+            for (input_vec, target) in inputs.iter().zip(targets.iter()) { 
+                let out = net.propagate_vec(input_vec.to_vec());
+                let diff = target - &out; 
+    
+                if diff[0].abs() >= tolerance { 
+                    can_stop = true; 
+                }
+    
+                println!("Absolute Error at iteration {} is {}", i ,diff[0].abs());
+                net.backprop(diff); 
+            }
+        };
+    
+        if !can_stop { 
+            println!("Sad did not learn XOR :(")
+        }
+    
     }
 }

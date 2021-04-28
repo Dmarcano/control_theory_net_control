@@ -36,12 +36,26 @@ fn main() {
     let tolerance = 0.1; 
     let num_epocs = 100; 
 
+    let mut can_stop = false; 
+
     for i in 0..num_epocs { 
         println!("Starting training epoch {}", i);
 
         for (input_vec, target) in inputs.iter().zip(targets.iter()) { 
+            let out = net.propagate_vec(input_vec.to_vec());
+            let diff = target - &out; 
 
+            if diff[0].abs() >= tolerance { 
+                can_stop = true; 
+            }
+
+            println!("Absolute Error at iteration {} is {}", i ,diff[0].abs());
+            net.backprop(diff); 
         }
+    };
+
+    if !can_stop { 
+        println!("Sad did not learn XOR :(")
     }
 
 }
