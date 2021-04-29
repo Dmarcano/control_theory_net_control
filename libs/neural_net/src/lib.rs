@@ -70,6 +70,9 @@ impl NeuralNetwork {
     /// propagates forward the input throughout the network and outputs the output from the
     /// final layer
     pub fn propagate(&mut self, inputs: F64Vector) -> F64Vector {
+        //TODO 
+        todo!("use weighted sum to propagate and cache weighted sum and activation");
+        
         let mut outputs = Vec::new();
         outputs.push(inputs.clone());
 
