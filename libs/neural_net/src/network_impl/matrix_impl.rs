@@ -1,10 +1,10 @@
 use crate::{F64Vector, Layer, LayerWeights};
-use nalgebra::{DMatrix, DVector, RowDVector};
+use nalgebra::{DMatrix, RowDVector};
 use rand::Rng;
 
 pub struct LayerMatrix {
     pub mat: DMatrix<f64>,
-    pub bias: DVector<f64>,
+    pub bias: RowDVector<f64>,
     activation_func: Box<dyn Fn(f64) -> f64>,
 }
 
@@ -18,13 +18,19 @@ impl LayerMatrix {
             .map(|row| RowDVector::from_vec(row))
             .collect();
         let mat = DMatrix::from_rows(row_vecs.as_ref());
-        let bias = DVector::from_vec(input.bias);
+        let bias = RowDVector::from_vec(input.bias);
 
         LayerMatrix {
             mat,
             activation_func: Box::new(re_lu),
             bias,
         }
+    }
+
+    /// computes the
+    pub fn weighted_sum(&self, inputs: &F64Vector)  -> F64Vector { 
+        let out = inputs * &self.mat;
+        out + &self.bias
     }
 
     // the number of input neurons is the number of rows of the matrix.
@@ -38,7 +44,7 @@ impl LayerMatrix {
             .map(|_| rng.gen_range(-1.0..=1.0))
             .collect();
 
-        let bias = DVector::from_vec(
+        let bias = RowDVector::from_vec(
             (0..output_neurons)
                 .map(|_| rng.gen_range(-1.0..=1.0))
                 .collect(),
@@ -60,7 +66,7 @@ fn re_lu(val: f64) -> f64 {
 
 impl Layer for LayerMatrix {
     fn propagate(&self, inputs: &F64Vector) -> F64Vector {
-        let out = inputs * &self.mat;
+        let out = (inputs * &self.mat) + &self.bias;
 
         RowDVector::from_iterator(
             out.len(),
@@ -130,5 +136,24 @@ mod tests {
             .iter()
             .zip(expected.as_slice().iter())
             .for_each(|(lhs, rhs)| assert!(relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
+    }
+
+    #[test]
+    fn bias_weighted_sum_test() { 
+        let input = RowDVector::from_vec(vec![5.0, 1.0]);
+        let weights = vec![vec![0.1, 0.2, 0.3], vec![0.4, 0.5, 0.6]];
+
+        let bias = vec![1.0, 0.5, 0.0];
+
+        let layer = LayerMatrix::new_from_weights(LayerWeights { weights, bias });
+
+        let out = layer.weighted_sum(&input); 
+        let expected = vec![1.9, 2.0, 2.1];
+
+        out.as_slice()
+            .iter()
+            .zip(expected.as_slice().iter())
+            .for_each(|(lhs, rhs)| assert!(relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
+
     }
 }
