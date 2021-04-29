@@ -23,8 +23,11 @@ pub struct NeuralNetwork {
     // multiple implementations of such object
     layers: Vec<LayerMatrix>,
 
-    /// The network outputs that correspond to each layer. Used for backpropagation calculations
-    outputs: Vec<F64Vector>,
+    /// The network outputs that correspond to each laye's weighted output after they have 
+    /// gone through the activation function
+    layer_activations: Vec<F64Vector>,
+
+    layer_weighted_sum : Vec<F64Vector>, 
 
     /// The networks learning rate when training using backpropagation
     pub learning_rate: f64,
@@ -70,18 +73,21 @@ impl NeuralNetwork {
     /// propagates forward the input throughout the network and outputs the output from the
     /// final layer
     pub fn propagate(&mut self, inputs: F64Vector) -> F64Vector {
-        //TODO 
-        todo!("use weighted sum to propagate and cache weighted sum and activation");
         
-        let mut outputs = Vec::new();
-        outputs.push(inputs.clone());
+        let mut weighted_sums = Vec::with_capacity(self.layers.len());
+        let mut activations = Vec::with_capacity(self.layers.len());
+
+        weighted_sums.push(inputs.clone());
 
         let final_out = self.layers.iter().fold(inputs, |next_inputs, layer| {
-            let out = layer.propagate(&next_inputs);
-            outputs.push(out.clone());
-            out
+            let out = layer.weighted_sum(&next_inputs);
+            weighted_sums.push(out.clone());
+            let activated = out.map(|val| activation_funcs::ReLu::activation(val));
+            activations.push(activated.clone());
+            activated
         });
-        self.outputs = outputs;
+        self.layer_activations = activations;
+        self.layer_weighted_sum = weighted_sums;
         final_out
     }
 
@@ -113,8 +119,8 @@ impl NeuralNetwork {
         // the first previous layer is a layer of 1's so that the output layer is not
         // changed
         let mut prev_layer_weight = &nalgebra::DMatrix::repeat(
-            self.outputs[self.outputs.len() - 1].nrows(),
-            self.outputs[self.outputs.len() - 1].ncols(),
+            self.layer_activations[self.layer_activations.len() - 1].nrows(),
+            self.layer_activations[self.layer_activations.len() - 1].ncols(),
             1.0,
         );
 
@@ -122,7 +128,7 @@ impl NeuralNetwork {
         for (layer, output) in self
             .layers
             .iter_mut()
-            .zip(self.outputs.as_slice().windows(2))
+            .zip(self.layer_activations.as_slice().windows(2))
             .rev()
         {
             // 1. let the layer err be the transpose previous weights times the previous delta
@@ -182,7 +188,7 @@ impl NeuralNetwork {
         // we want networks of at least 1 hidden layer
         assert!(topology.len() > 1);
         let mut rng = OsRng;
-        let mut outputs = Vec::with_capacity(topology.len());
+        let mut layer_activations = Vec::with_capacity(topology.len());
 
         let layers: Vec<LayerMatrix> = topology
             .windows(2)
@@ -194,7 +200,7 @@ impl NeuralNetwork {
                 );
                 // output neurons for backprop
                 let output_vec = F64Vector::from_vec(vec![0.0; adjacent_layers[1].num_neurons]);
-                outputs.push(output_vec);
+                layer_activations.push(output_vec);
                 layer
             })
             .collect();
@@ -211,7 +217,8 @@ impl NeuralNetwork {
         NeuralNetwork {
             layers,
             learning_rate,
-            outputs,
+            layer_weighted_sum : layer_activations.clone(),
+            layer_activations,
             lambda: regularization,
         }
     }
@@ -226,7 +233,7 @@ impl NeuralNetwork {
     /// * lambda : Regularization parameter should changes be needed
     pub fn load_weights(weights: Vec<LayerWeights>, alpha: f64, lambda: f64) -> Self {
         let mut built_layers = Vec::new();
-        let mut outputs = Vec::with_capacity(weights.len());
+        let mut layer_activations = Vec::with_capacity(weights.len());
 
         for layer_weights in weights {
             assert!(
@@ -237,7 +244,7 @@ impl NeuralNetwork {
             // each layer will output a 1x(num_cols) output so we create a vector with the length of each column
             let col_length = layer_weights.weights[0].len();
             let output_vec = F64Vector::from_vec(vec![0.0; col_length]);
-            outputs.push(output_vec);
+            layer_activations.push(output_vec);
             // now build the layer from the layer weights
             let layer = LayerMatrix::new_from_weights(layer_weights);
             built_layers.push(layer);
@@ -246,7 +253,8 @@ impl NeuralNetwork {
         // let outputs = vec![F64Vector::from_vec(), len()];
         NeuralNetwork {
             layers: built_layers,
-            outputs,
+            layer_weighted_sum : layer_activations.clone(),
+            layer_activations,
             learning_rate: alpha,
             lambda,
         }
@@ -294,7 +302,7 @@ mod tests {
 
         let expected = vec![input_one, expected_output_second, expected_output_final];
 
-        net.outputs
+        net.layer_activations
             .as_slice()
             .iter()
             .zip(expected.as_slice().iter())
