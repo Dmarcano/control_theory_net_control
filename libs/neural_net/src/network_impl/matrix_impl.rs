@@ -1,9 +1,10 @@
 use crate::{F64Vector, Layer, LayerWeights};
-use nalgebra::{DMatrix, RowDVector};
+use nalgebra::{DMatrix, DVector, RowDVector};
 use rand::Rng;
 
 pub struct LayerMatrix {
     pub mat: DMatrix<f64>,
+    pub bias: DVector<f64>,
     activation_func: Box<dyn Fn(f64) -> f64>,
 }
 
@@ -17,9 +18,12 @@ impl LayerMatrix {
             .map(|row| RowDVector::from_vec(row))
             .collect();
         let mat = DMatrix::from_rows(row_vecs.as_ref());
+        let bias = DVector::from_vec(input.bias);
+
         LayerMatrix {
             mat,
             activation_func: Box::new(re_lu),
+            bias,
         }
     }
 
@@ -30,14 +34,22 @@ impl LayerMatrix {
         output_neurons: usize,
         rng: &mut dyn rand::RngCore,
     ) -> Self {
-        let weights: Vec<f64> = (0..input_neurons * output_neurons)
+        let weights = (0..input_neurons * output_neurons)
             .map(|_| rng.gen_range(-1.0..=1.0))
             .collect();
+
+        let bias = DVector::from_vec(
+            (0..output_neurons)
+                .map(|_| rng.gen_range(-1.0..=1.0))
+                .collect(),
+        );
+
         let mat = DMatrix::from_vec(input_neurons, output_neurons, weights);
 
         LayerMatrix {
             mat,
             activation_func: Box::new(re_lu),
+            bias,
         }
     }
 }
@@ -78,17 +90,27 @@ mod tests {
     #[test]
     fn new_from_weights_test() {
         let weights = vec![vec![0.1, 0.2, 0.3], vec![0.4, 0.5, 0.6]];
+        let bias = vec![0.0, 0.0, 0.0];
 
-        let layer = LayerMatrix::new_from_weights(LayerWeights { weights });
+        let layer = LayerMatrix::new_from_weights(LayerWeights { weights, bias });
 
-        let expected = nalgebra::Matrix2x3::new(0.1, 0.2, 0.3, 0.4, 0.5, 0.6);
+        let expected_mat = nalgebra::Matrix2x3::new(0.1, 0.2, 0.3, 0.4, 0.5, 0.6);
+
+        let expected_bias = vec![0.0, 0.0, 0.0];
 
         // iterate and zip => (zip means to iterate two iterators with each item in the same order)
         layer
             .mat
             .as_slice()
             .iter()
-            .zip(expected.as_slice().iter())
+            .zip(expected_mat.as_slice().iter())
+            .for_each(|(lhs, rhs)| assert!(relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
+
+        layer
+            .bias
+            .as_slice()
+            .iter()
+            .zip(expected_bias.iter())
             .for_each(|(lhs, rhs)| assert!(relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
     }
 
@@ -96,7 +118,10 @@ mod tests {
     fn propagation_test() {
         let input = RowDVector::from_vec(vec![5.0, 1.0]);
         let weights = vec![vec![0.1, 0.2, 0.3], vec![0.4, 0.5, 0.6]];
-        let layer = LayerMatrix::new_from_weights(LayerWeights { weights });
+
+        let bias = vec![0.0, 0.0, 0.0];
+
+        let layer = LayerMatrix::new_from_weights(LayerWeights { weights, bias });
 
         let out = layer.propagate(&input);
         let expected = vec![0.9, 1.5, 2.1];

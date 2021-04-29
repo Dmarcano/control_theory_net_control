@@ -12,7 +12,7 @@ struct Neuron {
     weights: Vec<f64>,
 }
 
-impl NeuronVectorLayer { 
+impl NeuronVectorLayer {
     pub fn new_random(
         input_neurons: usize,
         output_neurons: usize,
@@ -69,8 +69,8 @@ impl Neuron {
         (self.bias + weighted_sum).max(0.0)
     }
 
-    pub fn new_from_weights(weights : Vec<f64>) -> Self{ 
-        // assert!(weights.len() > 1) 
+    pub fn new_from_weights(weights: Vec<f64>) -> Self {
+        // assert!(weights.len() > 1)
         todo!()
     }
 }

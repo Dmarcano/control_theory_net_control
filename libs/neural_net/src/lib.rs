@@ -8,11 +8,11 @@ use network_impl::matrix_impl::LayerMatrix;
 /// A double precision dynamic vector for use with neural nets
 pub type F64Vector = RowDVector<f64>;
 
-pub fn squared_err(rhs : &F64Vector, lhs : &F64Vector) -> F64Vector { 
+pub fn squared_err(rhs: &F64Vector, lhs: &F64Vector) -> F64Vector {
     // 1/2 * SSE for the target and output
-    let diff = rhs - lhs; 
+    let diff = rhs - lhs;
     let err = diff.component_mul(&diff);
-    err.map(|val| val/2.0)
+    err.map(|val| val / 2.0)
 }
 
 /// A network of neurons
@@ -44,6 +44,7 @@ pub struct LayerWeights {
     /// A matrix of layer weights where each row is a neuron of the current layer and the columns are the weights to neurons in
     /// the subsequent layer
     pub weights: Vec<Vec<f64>>,
+    pub bias: Vec<f64>,
 }
 
 /// A trait for the behavior of what a nueral net layer should be like
@@ -86,62 +87,64 @@ impl NeuralNetwork {
     /// ### Note
     /// Backpropagation works
     pub fn backprop(&mut self, err: F64Vector) {
-
         // for the output layer the input
         // 1. take the error vector
-        // 2. take hadamard product of err by derivative of current layer output => call this delta 
+        // 2. take hadamard product of err by derivative of current layer output => call this delta
         // 3. multiply the input to the current layer (transposed) by delta => call this change_weights
-        // 4. add assign the change_weights times learning_rate to the network weights 
+        // 4. add assign the change_weights times learning_rate to the network weights
 
         // for every single hidden layer
-        // 1. Take the previous layers delta 
+        // 1. Take the previous layers delta
         // 2. multiply it by the previous layer weigts (transpose) => new error vector
-        // 3. hadamard product of err and derivative of the output => call this delta 
+        // 3. hadamard product of err and derivative of the output => call this delta
         // 4. multiply the delta by the output of the hidden layer
-        // 
+        //
 
-        let mut weight_changes = Vec::new(); 
+        let mut weight_changes = Vec::new();
         let alpha = self.learning_rate;
 
         // t
-        
-            let mut prev_delta = err; 
-        
-        // the first previous layer is a layer of 1's so that the output layer is not 
-        // changed 
-        let mut prev_layer_weight =  &nalgebra::DMatrix::repeat(
+
+        let mut prev_delta = err;
+
+        // the first previous layer is a layer of 1's so that the output layer is not
+        // changed
+        let mut prev_layer_weight = &nalgebra::DMatrix::repeat(
             self.outputs[self.outputs.len() - 1].nrows(),
             self.outputs[self.outputs.len() - 1].ncols(),
-            1.0
+            1.0,
         );
 
-        // using the index 
-        for (layer, output) in self.layers.iter_mut().zip(self.outputs.as_slice().windows(2)).rev() { 
-
+        // using the index
+        for (layer, output) in self
+            .layers
+            .iter_mut()
+            .zip(self.outputs.as_slice().windows(2))
+            .rev()
+        {
             // 1. let the layer err be the transpose previous weights times the previous delta
-            let layer_err =  &prev_delta * prev_layer_weight.transpose() ; 
+            let layer_err = &prev_delta * prev_layer_weight.transpose();
 
-            // 2. create the layer output 
+            // 2. create the layer output
             let output_deriv = output[1].map(|val| activation_funcs::ReLu::derivative(val));
 
             // 3. use the output derivative and the layer err to find the delta
             let delta = layer_err.component_mul(&output_deriv);
 
             // the first layer input is its own output
-            
 
             // 4. use the delta and current layer input to find the weight change necessary
             let debug = &output[0];
-            let layer_adjustment = debug.transpose() *  &delta ; //todo!();
+            let layer_adjustment = debug.transpose() * &delta; //todo!();
 
-            prev_delta = delta; 
-            prev_layer_weight = & layer.mat; 
+            prev_delta = delta;
+            prev_layer_weight = &layer.mat;
 
             weight_changes.push(layer_adjustment);
         }
-        
-        for (weights, weight_change) in self.layers.iter_mut().zip(weight_changes.iter().rev()) { 
-            let regulated = weight_change.map(|val| val * alpha); 
+
+        for (weights, weight_change) in self.layers.iter_mut().zip(weight_changes.iter().rev()) {
+            let regulated = weight_change.map(|val| val * alpha);
             weights.mat += regulated;
         }
     }
@@ -156,13 +159,13 @@ impl NeuralNetwork {
     /// ## Example
     /// ```
     /// use neural_net::*;
-    /// 
+    ///
     /// let topology = vec![
     ///  LayerTopology{num_neurons : 4},
     ///  LayerTopology{num_neurons: 3},
     ///  LayerTopology{num_neurons: 1}];
-    /// 
-    /// //create a network with 3 layers. 4 input neurons, 3 hidden neurons, 1 output neuron 
+    ///
+    /// //create a network with 3 layers. 4 input neurons, 3 hidden neurons, 1 output neuron
     /// let net = NeuralNetwork::random(&topology, Some(0.1), None);
     /// ```
     ///
@@ -255,13 +258,19 @@ mod tests {
         let layer_one_weights = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
         let layer_two_weights = vec![vec![0.5], vec![0.1]];
 
+        let layer_one_bias = vec![0.0, 0.0];
+
+        let layer_two_bias = vec![0.0];
+
         NeuralNetwork::load_weights(
             vec![
                 LayerWeights {
                     weights: layer_one_weights,
+                    bias: layer_one_bias,
                 },
                 LayerWeights {
                     weights: layer_two_weights,
+                    bias: layer_two_bias,
                 },
             ],
             0.1,
@@ -283,7 +292,7 @@ mod tests {
         let expected = vec![input_one, expected_output_second, expected_output_final];
 
         net.outputs
-            .as_slice() 
+            .as_slice()
             .iter()
             .zip(expected.as_slice().iter())
             .for_each(|(lhs, rhs)| assert!(approx::relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
@@ -304,33 +313,37 @@ mod tests {
 
     // #[test]
     fn back_prop_test_no_check() {
-        let mut net = default_network(); 
+        let mut net = default_network();
 
         let input = RowDVector::from_vec(vec![-0.5, 1.5, 2.0]);
         let out = net.propagate(input);
 
-        let target =  RowDVector::from_vec(vec![5.0]);
+        let target = RowDVector::from_vec(vec![5.0]);
 
         // 1/2 * SSE for the target and output
-        let diff = &target - &out; 
+        let diff = &target - &out;
         let err = diff.component_mul(&diff);
-        let err = err.map(|val| val/2.0);
+        let err = err.map(|val| val / 2.0);
 
-        net.backprop(err); 
+        net.backprop(err);
     }
 
     // #[test]
-    fn web_backprop_test() { 
+    fn web_backprop_test() {
         let layer_one_weights = vec![vec![0.11, 0.12], vec![0.21, 0.08]];
+        let layer_one_bias = vec![0.0, 0.0];
         let layer_two_weights = vec![vec![0.14], vec![0.15]];
+        let layer_two_bias = vec![0.0];
 
         let mut net = NeuralNetwork::load_weights(
             vec![
                 LayerWeights {
                     weights: layer_one_weights,
+                    bias: layer_one_bias,
                 },
                 LayerWeights {
                     weights: layer_two_weights,
+                    bias: layer_two_bias,
                 },
             ],
             0.05,
@@ -338,80 +351,85 @@ mod tests {
         );
 
         let input = RowDVector::from_vec(vec![2.0, 3.0]);
-        let target =  RowDVector::from_vec(vec![1.0]);
+        let target = RowDVector::from_vec(vec![1.0]);
 
         let out = net.propagate(input.clone());
 
         // 1/2 * SSE for the target and output
-        let diff = &target - &out; 
+        let diff = &target - &out;
         let squared_error = squared_err(&target, &out);
-        net.backprop(diff); 
+        net.backprop(diff);
 
         let second_out = net.propagate(input);
 
-        let second_squared_err = squared_err(&target, &second_out); 
+        let second_squared_err = squared_err(&target, &second_out);
 
         assert!(squared_error > second_squared_err);
-
     }
 
     #[test]
-    fn main() { 
+    fn xor_test() {
         let inputs = vec![
-            vec![1.0, -1.0, -1.0], 
-            vec![1.0, -1.0, 1.0], 
-            vec![1.0, 1.0, -1.0], 
-            vec![1.0, 1.0, 1.0]
+            vec![1.0, -1.0, -1.0],
+            vec![1.0, -1.0, 1.0],
+            vec![1.0, 1.0, -1.0],
+            vec![1.0, 1.0, 1.0],
         ];
-    
-        let targets = vec! [ 
-            F64Vector::from_vec(vec![-1.0]), 
-            F64Vector::from_vec (vec![1.0]), 
-            F64Vector::from_vec (vec![1.0]), 
-            F64Vector::from_vec (vec![-1.0])
+
+        let targets = vec![
+            F64Vector::from_vec(vec![-1.0]),
+            F64Vector::from_vec(vec![1.0]),
+            F64Vector::from_vec(vec![1.0]),
+            F64Vector::from_vec(vec![-1.0]),
         ];
-    
-        let layer_one_weights = vec![ vec![0.14, -0.07, 0.10], vec![0.13, -0.23, 0.12], vec![-0.23, 0.11, 0.03]]; 
+
+        let layer_one_weights = vec![
+            vec![0.14, -0.07, 0.10],
+            vec![0.13, -0.23, 0.12],
+            vec![-0.23, 0.11, 0.03],
+        ];
+        let layer_one_bias = vec![0.0, 0.0, 0.0];
         let layer_two_weights = vec![vec![0.08], vec![0.04], vec![-0.05]];
-    
+        let layer_two_bias = vec![0.0];
+
         let mut net = NeuralNetwork::load_weights(
             vec![
                 LayerWeights {
                     weights: layer_one_weights,
+                    bias: layer_one_bias,
                 },
                 LayerWeights {
                     weights: layer_two_weights,
+                    bias: layer_two_bias,
                 },
             ],
             0.05,
             0.2,
         );
-    
-        let tolerance = 0.1; 
-        let num_epocs = 100; 
-    
-        let mut can_stop = false; 
-    
-        for i in 0..num_epocs { 
+
+        let tolerance = 0.1;
+        let num_epocs = 100;
+
+        let mut can_stop = false;
+
+        for i in 0..num_epocs {
             println!("Starting training epoch {}", i);
-    
-            for (input_vec, target) in inputs.iter().zip(targets.iter()) { 
+
+            for (input_vec, target) in inputs.iter().zip(targets.iter()) {
                 let out = net.propagate_vec(input_vec.to_vec());
-                let mut diff =   target - &out; 
-    
-                if diff[0].abs() >= tolerance { 
-                    can_stop = true; 
+                let mut diff = target - &out;
+
+                if diff[0].abs() >= tolerance {
+                    can_stop = true;
                 }
-                
-                println!("Absolute Error at iteration {} is {}", i ,diff[0].abs());
-                net.backprop(diff); 
-               
+
+                println!("Absolute Error at iteration {} is {}", i, diff[0].abs());
+                net.backprop(diff);
             }
-        };
-    
-        if !can_stop { 
+        }
+
+        if !can_stop {
             println!("Sad did not learn XOR :(")
         }
-    
     }
 }
