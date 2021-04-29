@@ -360,7 +360,7 @@ mod tests {
         let inputs = vec![
             vec![1.0, -1.0, -1.0], 
             vec![1.0, -1.0, 1.0], 
-            vec![1.0,1.0, -1.0], 
+            vec![1.0, 1.0, -1.0], 
             vec![1.0, 1.0, 1.0]
         ];
     
@@ -384,7 +384,7 @@ mod tests {
                 },
             ],
             0.05,
-            0.1,
+            0.2,
         );
     
         let tolerance = 0.1; 
@@ -397,14 +397,15 @@ mod tests {
     
             for (input_vec, target) in inputs.iter().zip(targets.iter()) { 
                 let out = net.propagate_vec(input_vec.to_vec());
-                let diff = target - &out; 
+                let mut diff =   target - &out; 
     
                 if diff[0].abs() >= tolerance { 
                     can_stop = true; 
                 }
-    
+                
                 println!("Absolute Error at iteration {} is {}", i ,diff[0].abs());
                 net.backprop(diff); 
+               
             }
         };
     

@@ -1,4 +1,4 @@
-use crate::{F64Vector, Layer};
+use crate::{F64Vector, Layer, LayerWeights};
 use nalgebra::RowDVector;
 
 struct NeuronVectorLayer {
@@ -10,6 +10,28 @@ struct NeuronVectorLayer {
 struct Neuron {
     bias: f64,
     weights: Vec<f64>,
+}
+
+impl NeuronVectorLayer { 
+    pub fn new_random(
+        input_neurons: usize,
+        output_neurons: usize,
+        rng: &mut dyn rand::RngCore,
+    ) -> Self {
+        todo!()
+    }
+
+    pub fn new_from_weights(input: LayerWeights) -> Self {
+        assert!(input.weights.len() > 0);
+        // iterate over the vectors as rows and use them to create a matrix by row order
+        let row_vecs: Vec<Neuron> = input
+            .weights
+            .into_iter()
+            .map(|row| Neuron::new_from_weights(row))
+            .collect();
+
+        todo!()
+    }
 }
 
 impl Layer for NeuronVectorLayer {
@@ -45,5 +67,10 @@ impl Neuron {
 
         // this neuron will assume to always use the ReLU activation function for now
         (self.bias + weighted_sum).max(0.0)
+    }
+
+    pub fn new_from_weights(weights : Vec<f64>) -> Self{ 
+        // assert!(weights.len() > 1) 
+        todo!()
     }
 }
