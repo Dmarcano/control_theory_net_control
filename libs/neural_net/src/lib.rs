@@ -135,7 +135,7 @@ impl NeuralNetwork {
             let weighted_sum_deriv = weighted_sum.map(|val| deriv(val));
             // take the next layer's weights multiplied by that layers error. multiply by the derivative
             // this is this layers delta or error
-            let debug =   &layer.mat * &prev_delta;
+            let debug =   &layer.mat * &prev_delta.transpose();
             let delta = debug.component_mul(&weighted_sum_deriv.transpose());
 
             // let debug3 = DMatrix::from_rows(&[activation.clone()]);
@@ -413,10 +413,10 @@ mod tests {
     #[test]
     fn xor_test() {
         let inputs = vec![
-            vec![-1.0, -1.0],
-            vec![-1.0, 1.0],
+            vec![ -1.0, -1.0],
+            vec![ -1.0, 1.0],
             vec![1.0, -1.0],
-            vec![1.0, 1.0],
+            vec![ 1.0, 1.0],
         ];
 
         let targets = vec![
@@ -442,21 +442,21 @@ mod tests {
                     bias: layer_two_bias,
                 },
             ],
-            0.5,
+            0.2,
             0.2,
             ActivationFunction::TanH
         );
 
-        // let mut net = NeuralNetwork::random(
-        //     &[
-        //         LayerTopology { num_neurons: 2 },
-        //         LayerTopology { num_neurons: 3 },
-        //         LayerTopology { num_neurons: 1 },
-        //     ],
-        //     Some(0.4),
-        //     None,
-        //     ActivationFunction::TanH,
-        // );
+        let mut net2 = NeuralNetwork::random(
+            &[
+                LayerTopology { num_neurons: 2 },
+                LayerTopology { num_neurons: 3 },
+                LayerTopology { num_neurons: 1 },
+            ],
+            Some(0.5),
+            None,
+            ActivationFunction::TanH,
+        );
 
         let tolerance = 0.1;
         let num_epocs = 200;
@@ -474,6 +474,10 @@ mod tests {
                     can_stop = true;
                 }
 
+                if diff[0].abs() >= tolerance {
+                    can_stop = false;
+                }
+
                 println!(
                     "Output for input {:?} is {} target = {} diff = {}",
                     input_vec, out[0], target[0], diff[0]
@@ -481,6 +485,11 @@ mod tests {
 
                 // println!("Absolute Error at iteration {} is {}", i, diff[0].abs());
                 net.backprop(diff);
+            }
+
+            if can_stop {
+                println!("All correct so stopping!");
+                break;
             }
         }
 
