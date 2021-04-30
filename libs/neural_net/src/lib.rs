@@ -4,6 +4,7 @@ use nalgebra::{DMatrix, RowDVector};
 use rand::{rngs::OsRng, Rng};
 
 use network_impl::matrix_impl::LayerMatrix;
+use activation_funcs::ActivationFunction;
 
 /// A double precision dynamic vector for use with neural nets
 pub type F64Vector = RowDVector<f64>;
@@ -34,6 +35,10 @@ pub struct NeuralNetwork {
 
     /// The networks regularization parameter. Penalizes large weigth values
     pub lambda: f64,
+
+    activation_func : &'static dyn Fn(f64) -> f64, 
+
+    activation_deriv : &'static dyn Fn(f64) -> f64, 
 }
 
 /// A layer topology is simply the number of neurons per a single layer.
@@ -78,10 +83,12 @@ impl NeuralNetwork {
 
         activations.push(inputs.clone());
 
+        let activation = self.activation_func;
+
         let final_out = self.layers.iter().fold(inputs, |next_inputs, layer| {
             let out = layer.weighted_sum(&next_inputs);
             weighted_sums.push(out.clone());
-            let activated = out.map(|val| activation_funcs::TanH::activation(val));
+            let activated = out.map(|val| activation(val));
             activations.push(activated.clone());
             activated
         });
@@ -98,10 +105,12 @@ impl NeuralNetwork {
         let alpha = self.learning_rate;
 
         // 1. Computer the gradient of the output layer
+        let deriv = self.activation_deriv;
+        
 
         // Compute the derivative of the final weighted sum into the output layer
         let last_deriv = &self.layer_weighted_sum[self.layer_weighted_sum.len() - 1]
-            .map(|val| activation_funcs::TanH::derivative(val));
+            .map(|val| deriv(val));
 
         // take the Hardman product of the error with the derivative of final weighted sum
         let mut prev_delta = err.component_mul(&last_deriv); // we convert to a matrix because of nalgebras type system
@@ -122,7 +131,7 @@ impl NeuralNetwork {
         {
             // Take the derivative of the input weighted sum to the layer
             let weighted_sum_deriv =
-                weighted_sum.map(|val| activation_funcs::TanH::derivative(val));
+                weighted_sum.map(|val| deriv(val));
             // take the next layer's weights multiplied by that layers error. multiply by the derivative
             // this is this layers delta or error
             let debug = &prev_delta *layer.mat.transpose();
@@ -241,7 +250,7 @@ impl NeuralNetwork {
     /// The network does not automatically add a bias neuron and leaves
     /// it to users to augment input vectors to include bias terms in their dataset
     ///
-    pub fn random(topology: &[LayerTopology], alpha: Option<f64>, lambda: Option<f64>) -> Self {
+    pub fn random(topology: &[LayerTopology], alpha: Option<f64>, lambda: Option<f64>, activation_func : ActivationFunction) -> Self {
         // we want networks of at least 1 hidden layer
         assert!(topology.len() > 1);
         let mut rng = OsRng;
@@ -271,12 +280,16 @@ impl NeuralNetwork {
             Some(val) => val,
         };
 
+        let (activation, derivative) = activation_funcs::get_functions(activation_func);
+
         NeuralNetwork {
             layers,
             learning_rate,
             layer_weighted_sum: layer_activations.clone(),
             layer_activations,
             lambda: regularization,
+            activation_deriv : derivative, 
+            activation_func : activation,
         }
     }
 
@@ -288,7 +301,7 @@ impl NeuralNetwork {
     /// * weights: Vector of LayerWeighst that are used to describe the network
     /// * alpha : Learning rate should changes be needed
     /// * lambda : Regularization parameter should changes be needed
-    pub fn load_weights(weights: Vec<LayerWeights>, alpha: f64, lambda: f64) -> Self {
+    pub fn load_weights(weights: Vec<LayerWeights>, alpha: f64, lambda: f64, activation_func : ActivationFunction) -> Self {
         let mut built_layers = Vec::new();
         let mut layer_activations = Vec::with_capacity(weights.len());
 
@@ -305,7 +318,10 @@ impl NeuralNetwork {
             // now build the layer from the layer weights
             let layer = LayerMatrix::new_from_weights(layer_weights);
             built_layers.push(layer);
-        }
+        }  
+
+        let (activation, derivative) = activation_funcs::get_functions(activation_func);
+
 
         // let outputs = vec![F64Vector::from_vec(), len()];
         NeuralNetwork {
@@ -314,6 +330,8 @@ impl NeuralNetwork {
             layer_activations,
             learning_rate: alpha,
             lambda,
+            activation_deriv : derivative, 
+            activation_func : activation,
         }
     }
 }
@@ -343,6 +361,7 @@ mod tests {
             ],
             0.1,
             0.1,
+            activation_funcs::ActivationFunction::ReLu
         )
     }
 
@@ -415,6 +434,7 @@ mod tests {
             ],
             0.05,
             0.1,
+            activation_funcs::ActivationFunction::ReLu
         );
 
         let input = RowDVector::from_vec(vec![2.0, 3.0]);
@@ -472,6 +492,7 @@ mod tests {
             ],
             0.2,
             0.2,
+            ActivationFunction::TanH
         );
 
         let tolerance = 0.1;
