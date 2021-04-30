@@ -3,7 +3,7 @@ pub enum ActivationFunction {
     ReLu,
     Sigmoid,
     TanH,
-    LeakyRelu
+    LeakyRelu,
 }
 
 pub(crate) struct ReLu;
@@ -39,15 +39,15 @@ impl ReLu {
 
 impl Sigmoid {
     pub fn activation(input: f64) -> f64 {
-        (1.0)/(1.0 + (-1.0*input.exp()))
+        (1.0) / (1.0 + (-1.0 * input.exp()))
     }
 
     pub fn derivative(input: f64) -> f64 {
-        Sigmoid::activation(input)*(1.0 - Sigmoid::activation(input))
+        Sigmoid::activation(input) * (1.0 - Sigmoid::activation(input))
     }
 }
 
-impl TanH { 
+impl TanH {
     pub fn activation(input: f64) -> f64 {
         input.tanh()
     }
