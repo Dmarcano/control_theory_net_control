@@ -9,8 +9,6 @@ use network_impl::matrix_impl::LayerMatrix;
 /// A double precision dynamic vector for use with neural nets
 pub type F64Vector = RowDVector<f64>;
 
-type BackPropAccum = Option<BackPropOutput>;
-
 pub fn squared_err(rhs: &F64Vector, lhs: &F64Vector) -> F64Vector {
     // 1/2 * SSE for the target and output
     let diff = rhs - lhs;
@@ -108,10 +106,14 @@ impl NeuralNetwork {
 
     
 
-    /// Recomputes network weights by propagation an error vector along with the
+    /// Computes the networks gradient relative to a given the derivative of the error with respect to 
+    /// the networks output activation.
     ///
     /// ### Note
-    /// Backpropagation works
+    /// 
+    /// Backpropagation right now works on the assumption that the given input is part of a 
+    /// Sum of Squared Errors loss. That is the that the derivative is simply the raw error of the network output 
+    /// and the target
     pub fn backprop(&mut self, err: F64Vector) -> BackPropOutput {
         let mut weight_changes: Vec<DMatrix<f64>> = Vec::with_capacity(self.layers.len());
         let mut bias_changes = Vec::with_capacity(self.layers.len());
@@ -161,6 +163,7 @@ impl NeuralNetwork {
         // self.update_weights(weight_changes, bias_changes);
     }
 
+    /// Combines the left hand side and right hand side backpropagation outputs into the sum of one output
     pub fn combine_backprop_outputs(lhs :  BackPropOutput, rhs :& BackPropOutput) -> BackPropOutput { 
         
        let weight_changes = lhs.weight_changes
@@ -172,12 +175,15 @@ impl NeuralNetwork {
         let bias_changes = lhs.bias_changes
         .into_iter()
         .zip(rhs.bias_changes.iter())
-        .map(|(mut left_bias_changes, right_bias_changes)| left_bias_changes + right_bias_changes)
+        .map(|(left_bias_changes, right_bias_changes)| left_bias_changes + right_bias_changes)
         .collect();
 
         BackPropOutput{weight_changes, bias_changes}
     }
 
+    /// Updates a networks weights based on the given backpropagation output and the 
+    /// networks learning rate
+    /// Currently this network does not implement any regularization.
     pub fn update_weights(&mut self, output : &BackPropOutput ) { 
 
         let alpha = self.learning_rate; 
@@ -189,9 +195,7 @@ impl NeuralNetwork {
         {
             let regulated = weight_change.map(|val| val * alpha);
             let regulated_bias = bias_change.map(|val| val * alpha);
-            println!{"{}", layer.mat}
             layer.mat += regulated;
-            println!{"{}", layer.mat}
             layer.bias += regulated_bias;
         }
     }
