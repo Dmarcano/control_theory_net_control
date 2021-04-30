@@ -225,6 +225,8 @@ for training_epoch in range(100):
     w45 += alpha * D45
     w05 += alpha * D05
 
+    print()
+
 ##################################################
 # all done
 

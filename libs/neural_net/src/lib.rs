@@ -9,6 +9,8 @@ use network_impl::matrix_impl::LayerMatrix;
 /// A double precision dynamic vector for use with neural nets
 pub type F64Vector = RowDVector<f64>;
 
+type BackPropAccum = Option<BackPropOutput>;
+
 pub fn squared_err(rhs: &F64Vector, lhs: &F64Vector) -> F64Vector {
     // 1/2 * SSE for the target and output
     let diff = rhs - lhs;
@@ -145,14 +147,9 @@ impl NeuralNetwork {
             let debug =   &layer.mat * &prev_delta.transpose();
             let delta = debug.component_mul(&weighted_sum_deriv.transpose());
 
-            // let debug3 = DMatrix::from_rows(&[activation.clone()]);
-            // weight_change = debug2 * debug3;
-            // let debug2 = delta.transpose();
-            // let weight_change =  activation.transpose() * &delta.transpose();
             let weight_change = &delta * activation;
             
-            // let weight_change = debug2 * activation;
-
+            // update our variables to descent
             weight_changes.push(weight_change.transpose());
             bias_changes.push(delta.transpose());
             prev_delta = delta.transpose();
@@ -164,14 +161,31 @@ impl NeuralNetwork {
         // self.update_weights(weight_changes, bias_changes);
     }
 
-    pub fn update_weights(&mut self, weight_changes : Vec<DMatrix<f64>>, bias_changes : Vec<F64Vector> ) { 
+    pub fn combine_backprop_outputs(lhs :  BackPropOutput, rhs :& BackPropOutput) -> BackPropOutput { 
+        
+       let weight_changes = lhs.weight_changes
+       .into_iter()
+       .zip(rhs.weight_changes.iter())
+       .map(|(left_weight_changes, right_weight_changes )|left_weight_changes + right_weight_changes )
+       .collect();
+
+        let bias_changes = lhs.bias_changes
+        .into_iter()
+        .zip(rhs.bias_changes.iter())
+        .map(|(mut left_bias_changes, right_bias_changes)| left_bias_changes + right_bias_changes)
+        .collect();
+
+        BackPropOutput{weight_changes, bias_changes}
+    }
+
+    pub fn update_weights(&mut self, output : &BackPropOutput ) { 
 
         let alpha = self.learning_rate; 
 
-        for ((weight_change, bias_change), layer) in weight_changes
+        for ((weight_change, bias_change), layer) in output.weight_changes
             .iter()
-            .zip(bias_changes.iter())
-            .zip(self.layers.iter_mut().rev())
+            .zip(output.bias_changes.iter())
+            .zip(self.layers.iter_mut())
         {
             let regulated = weight_change.map(|val| val * alpha);
             let regulated_bias = bias_change.map(|val| val * alpha);
@@ -443,6 +457,8 @@ mod tests {
         let layer_two_weights = vec![vec![0.04], vec![0. - 0.05]];
         let layer_two_bias = vec![0.08];
 
+        let mut backprop_accum : Option<BackPropOutput> = None; 
+
         let mut net = NeuralNetwork::load_weights(
             vec![
                 LayerWeights {
@@ -471,21 +487,20 @@ mod tests {
         );
 
         let tolerance = 0.1;
-        let num_epocs = 1;
+        let num_epocs = 100;
 
         let mut can_stop = false;
 
         for i in 0..num_epocs {
+            can_stop = true; 
+
             println!("Starting training epoch {}\n", i);
 
             for (input_vec, target) in inputs.iter().zip(targets.iter()) {
                 let out = net.propagate_vec(input_vec.to_vec());
                 let diff = target - &out;
 
-                if diff[0].abs() <= tolerance {
-                    can_stop = true;
-                }
-
+               
                 if diff[0].abs() >= tolerance {
                     can_stop = false;
                 }
@@ -496,9 +511,17 @@ mod tests {
                 );
 
                 // println!("Absolute Error at iteration {} is {}", i, diff[0].abs());
-                net.backprop(diff);
-                break
+                let back_prop_out = net.backprop(diff);
+                
+                backprop_accum = match backprop_accum { 
+                    None => Some(back_prop_out),
+                    Some(accum) => Some(NeuralNetwork::combine_backprop_outputs(accum, &back_prop_out)  )
+                };
             }
+
+            let update = backprop_accum.take().unwrap();
+            net.update_weights(&update);
+
 
             if can_stop {
                 println!("All correct so stopping!");
