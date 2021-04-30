@@ -1,6 +1,6 @@
 mod activation_funcs;
 mod network_impl;
-use nalgebra::RowDVector;
+use nalgebra::{DMatrix, RowDVector};
 use rand::{rngs::OsRng, Rng};
 
 use network_impl::matrix_impl::LayerMatrix;
@@ -23,11 +23,11 @@ pub struct NeuralNetwork {
     // multiple implementations of such object
     layers: Vec<LayerMatrix>,
 
-    /// The network outputs that correspond to each laye's weighted output after they have 
+    /// The network outputs that correspond to each laye's weighted output after they have
     /// gone through the activation function
     layer_activations: Vec<F64Vector>,
 
-    layer_weighted_sum : Vec<F64Vector>, 
+    layer_weighted_sum: Vec<F64Vector>,
 
     /// The networks learning rate when training using backpropagation
     pub learning_rate: f64,
@@ -73,22 +73,79 @@ impl NeuralNetwork {
     /// propagates forward the input throughout the network and outputs the output from the
     /// final layer
     pub fn propagate(&mut self, inputs: F64Vector) -> F64Vector {
-        
         let mut weighted_sums = Vec::with_capacity(self.layers.len());
         let mut activations = Vec::with_capacity(self.layers.len());
 
-        weighted_sums.push(inputs.clone());
+        activations.push(inputs.clone());
 
         let final_out = self.layers.iter().fold(inputs, |next_inputs, layer| {
             let out = layer.weighted_sum(&next_inputs);
             weighted_sums.push(out.clone());
-            let activated = out.map(|val| activation_funcs::ReLu::activation(val));
+            let activated = out.map(|val| activation_funcs::TanH::activation(val));
             activations.push(activated.clone());
             activated
         });
+        // get rid of the final activatino 'output'
+        activations.pop();
         self.layer_activations = activations;
         self.layer_weighted_sum = weighted_sums;
         final_out
+    }
+
+    pub fn new_backprop(&mut self, err: F64Vector) {
+        let mut weight_changes : Vec<DMatrix<f64>> = Vec::with_capacity(self.layers.len());
+        let mut bias_changes = Vec::with_capacity(self.layers.len());
+        let alpha = self.learning_rate;
+
+        // 1. Computer the gradient of the output layer
+
+        // Compute the derivative of the final weighted sum into the output layer
+        let last_deriv = &self.layer_weighted_sum[self.layer_weighted_sum.len() - 1]
+            .map(|val| activation_funcs::TanH::derivative(val));
+
+        // take the Hardman product of the error with the derivative of final weighted sum
+        let mut prev_delta = err.component_mul(&last_deriv); // we convert to a matrix because of nalgebras type system
+
+        // compute the weight change which is the input activation to the final layer and the delta
+        let weight_change =
+        &prev_delta * &self.layer_activations[self.layer_activations.len() - 1];
+
+        weight_changes.push(DMatrix::from_columns(&[weight_change.transpose()]));
+        bias_changes.push(prev_delta.clone());
+
+        // 2 compute all of the other's gradients
+        for ((layer, activation), weighted_sum) in self.layers[1..]
+            .iter()
+            .zip(self.layer_activations[..&self.layer_activations.len() - 1].iter())
+            .zip(self.layer_weighted_sum[..&self.layer_weighted_sum.len() - 1].iter())
+            .rev()
+        {
+            // Take the derivative of the input weighted sum to the layer
+            let weighted_sum_deriv =
+                weighted_sum.map(|val| activation_funcs::TanH::derivative(val));
+            // take the next layer's weights multiplied by that layers error. multiply by the derivative
+            // this is this layers delta or error
+            let debug = &prev_delta *layer.mat.transpose();
+            let delta = debug.component_mul(&weighted_sum_deriv);
+
+            // let debug3 = DMatrix::from_rows(&[activation.clone()]);
+            // weight_change = debug2 * debug3;
+            let debug2 = delta.transpose();
+           let weight_change = debug2 * activation;
+
+            weight_changes.push(weight_change);
+            bias_changes.push(delta.clone());
+            prev_delta = delta;
+        }
+
+        for ((weight_change, bias_change), layer) in weight_changes.iter()
+        .zip(bias_changes.iter())
+        .zip(self.layers.iter_mut().rev()) { 
+            let regulated = weight_change.map(|val| val * alpha);
+            let regulated_bias = bias_change.map(|val| val * alpha);
+            layer.mat += regulated;
+            layer.bias += regulated_bias;
+        }
     }
 
     /// Recomputes network weights by propagation an error vector along with the
@@ -135,7 +192,7 @@ impl NeuralNetwork {
             let layer_err = &prev_delta * prev_layer_weight.transpose();
 
             // 2. create the layer output
-            let output_deriv = output[1].map(|val| activation_funcs::ReLu::derivative(val));
+            let output_deriv = output[1].map(|val| activation_funcs::TanH::derivative(val));
 
             // 3. use the output derivative and the layer err to find the delta
             let delta = layer_err.component_mul(&output_deriv);
@@ -154,7 +211,7 @@ impl NeuralNetwork {
 
         for (weights, weight_change) in self.layers.iter_mut().zip(weight_changes.iter().rev()) {
             let regulated = weight_change.map(|val| val * alpha);
-            weights.mat += regulated;
+            weights.mat -= regulated;
         }
     }
 
@@ -217,7 +274,7 @@ impl NeuralNetwork {
         NeuralNetwork {
             layers,
             learning_rate,
-            layer_weighted_sum : layer_activations.clone(),
+            layer_weighted_sum: layer_activations.clone(),
             layer_activations,
             lambda: regularization,
         }
@@ -253,7 +310,7 @@ impl NeuralNetwork {
         // let outputs = vec![F64Vector::from_vec(), len()];
         NeuralNetwork {
             layers: built_layers,
-            layer_weighted_sum : layer_activations.clone(),
+            layer_weighted_sum: layer_activations.clone(),
             layer_activations,
             learning_rate: alpha,
             lambda,
@@ -297,10 +354,9 @@ mod tests {
         let input_one = RowDVector::from_vec(vec![-0.5, 1.5, 2.0]);
 
         let _ = net.propagate(input_one.clone());
-        let expected_output_final = F64Vector::from_vec(vec![8.7]); // expected value of final layer output
         let expected_output_second = F64Vector::from_vec(vec![14.0, 17.0]); // expected value of the hidden layer
 
-        let expected = vec![input_one, expected_output_second, expected_output_final];
+        let expected = vec![input_one, expected_output_second];
 
         net.layer_activations
             .as_slice()
@@ -367,9 +423,10 @@ mod tests {
         let out = net.propagate(input.clone());
 
         // 1/2 * SSE for the target and output
-        let diff = &target - &out;
+        let diff = &out - &target;
         let squared_error = squared_err(&target, &out);
-        net.backprop(diff);
+        // net.backprop(diff);
+        net.new_backprop(diff);
 
         let second_out = net.propagate(input);
 
@@ -378,13 +435,13 @@ mod tests {
         assert!(squared_error > second_squared_err);
     }
 
-    #[test]
+    #[test] 
     fn xor_test() {
         let inputs = vec![
-            vec![1.0, -1.0, -1.0],
-            vec![1.0, -1.0, 1.0],
-            vec![1.0, 1.0, -1.0],
-            vec![1.0, 1.0, 1.0],
+            vec![-1.0, -1.0],
+            vec![-1.0, 1.0],
+            vec![1.0, -1.0],
+            vec![1.0, 1.0],
         ];
 
         let targets = vec![
@@ -395,13 +452,12 @@ mod tests {
         ];
 
         let layer_one_weights = vec![
-            vec![0.14, -0.07, 0.10],
-            vec![0.13, -0.23, 0.12],
-            vec![-0.23, 0.11, 0.03],
+            vec![0.13, -0.23],
+            vec![-0.23, 0.11],
         ];
-        let layer_one_bias = vec![0.0, 0.0, 0.0];
-        let layer_two_weights = vec![vec![0.08], vec![0.04], vec![-0.05]];
-        let layer_two_bias = vec![0.0];
+        let layer_one_bias = vec![0.14, -0.07];
+        let layer_two_weights = vec![vec![0.04], vec![0.-0.05]];
+        let layer_two_bias = vec![0.08];
 
         let mut net = NeuralNetwork::load_weights(
             vec![
@@ -414,28 +470,30 @@ mod tests {
                     bias: layer_two_bias,
                 },
             ],
-            0.05,
+            0.2,
             0.2,
         );
 
         let tolerance = 0.1;
-        let num_epocs = 100;
+        let num_epocs = 200;
 
         let mut can_stop = false;
 
         for i in 0..num_epocs {
-            println!("Starting training epoch {}", i);
+            println!("Starting training epoch {}\n", i);
 
             for (input_vec, target) in inputs.iter().zip(targets.iter()) {
                 let out = net.propagate_vec(input_vec.to_vec());
-                let mut diff = target - &out;
+                let diff =  target - &out ;
 
-                if diff[0].abs() >= tolerance {
+                if diff[0].abs() <= tolerance {
                     can_stop = true;
                 }
 
-                println!("Absolute Error at iteration {} is {}", i, diff[0].abs());
-                net.backprop(diff);
+                println!("Output for input {:?} is {} target = {} diff = {}", input_vec, out[0], target[0], diff[0]);
+
+                // println!("Absolute Error at iteration {} is {}", i, diff[0].abs());
+                net.new_backprop(diff);
             }
         }
 

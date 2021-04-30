@@ -33,7 +33,28 @@ impl ReLu {
     }
 }
 
-impl Sigmoid {}
+impl Sigmoid {
+    pub fn activation(input: f64) -> f64 {
+        input.max(0.0)
+    }
+
+    pub fn derivative(input: f64) -> f64 {
+        match input {
+            val if val > 0.0 => 1.0,
+            _ => 0.0,
+        }
+    }
+}
+
+impl TanH { 
+    pub fn activation(input: f64) -> f64 {
+        input.tanh()
+    }
+
+    pub fn derivative(input: f64) -> f64 {
+        1.0 - (input.tanh().powf(2.0))
+    }
+}
 
 #[cfg(test)]
 mod tests {

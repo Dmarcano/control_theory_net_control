@@ -28,7 +28,7 @@ impl LayerMatrix {
     }
 
     /// computes the
-    pub fn weighted_sum(&self, inputs: &F64Vector)  -> F64Vector { 
+    pub fn weighted_sum(&self, inputs: &F64Vector) -> F64Vector {
         let out = inputs * &self.mat;
         out + &self.bias
     }
@@ -139,7 +139,7 @@ mod tests {
     }
 
     #[test]
-    fn bias_weighted_sum_test() { 
+    fn bias_weighted_sum_test() {
         let input = RowDVector::from_vec(vec![5.0, 1.0]);
         let weights = vec![vec![0.1, 0.2, 0.3], vec![0.4, 0.5, 0.6]];
 
@@ -147,13 +147,12 @@ mod tests {
 
         let layer = LayerMatrix::new_from_weights(LayerWeights { weights, bias });
 
-        let out = layer.weighted_sum(&input); 
+        let out = layer.weighted_sum(&input);
         let expected = vec![1.9, 2.0, 2.1];
 
         out.as_slice()
             .iter()
             .zip(expected.as_slice().iter())
             .for_each(|(lhs, rhs)| assert!(relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
-
     }
 }
