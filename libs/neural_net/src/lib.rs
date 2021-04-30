@@ -106,7 +106,6 @@ impl NeuralNetwork {
     pub fn backprop(&mut self, err: F64Vector) {
         let mut weight_changes: Vec<DMatrix<f64>> = Vec::with_capacity(self.layers.len());
         let mut bias_changes = Vec::with_capacity(self.layers.len());
-        let alpha = self.learning_rate;
 
         // 1. Computer the gradient of the output layer
         let deriv = self.activation_deriv;
@@ -119,9 +118,10 @@ impl NeuralNetwork {
         let mut prev_delta = err.component_mul(&last_deriv); // we convert to a matrix because of nalgebras type system
 
         // compute the weight change which is the input activation to the final layer and the delta
-        let weight_change = &prev_delta * &self.layer_activations[self.layer_activations.len() - 1];
+        let last_activation =  &self.layer_activations[self.layer_activations.len() - 1];
+        let weight_change = last_activation.transpose() * &prev_delta.transpose() ;
 
-        weight_changes.push(DMatrix::from_columns(&[weight_change.transpose()]));
+        weight_changes.push(DMatrix::from_columns(&[weight_change]));
         bias_changes.push(prev_delta.clone());
 
         // 2 compute all of the other's gradients
@@ -135,18 +135,28 @@ impl NeuralNetwork {
             let weighted_sum_deriv = weighted_sum.map(|val| deriv(val));
             // take the next layer's weights multiplied by that layers error. multiply by the derivative
             // this is this layers delta or error
-            let debug = &prev_delta * layer.mat.transpose();
-            let delta = debug.component_mul(&weighted_sum_deriv);
+            let debug =   &layer.mat * &prev_delta;
+            let delta = debug.component_mul(&weighted_sum_deriv.transpose());
 
             // let debug3 = DMatrix::from_rows(&[activation.clone()]);
             // weight_change = debug2 * debug3;
-            let debug2 = delta.transpose();
-            let weight_change = debug2 * activation;
+            // let debug2 = delta.transpose();
+            // let weight_change =  activation.transpose() * &delta.transpose();
+            let weight_change = &delta * activation;
+            
+            // let weight_change = debug2 * activation;
 
-            weight_changes.push(weight_change);
-            bias_changes.push(delta.clone());
-            prev_delta = delta;
+            weight_changes.push(weight_change.transpose());
+            bias_changes.push(delta.transpose());
+            prev_delta = delta.transpose();
         }
+
+        self.update_weights(weight_changes, bias_changes);
+    }
+
+    fn update_weights(&mut self, weight_changes : Vec<DMatrix<f64>>, bias_changes : Vec<F64Vector> ) { 
+
+        let alpha = self.learning_rate; 
 
         for ((weight_change, bias_change), layer) in weight_changes
             .iter()
@@ -155,7 +165,7 @@ impl NeuralNetwork {
         {
             let regulated = weight_change.map(|val| val * alpha);
             let regulated_bias = bias_change.map(|val| val * alpha);
-            layer.mat += regulated.transpose();
+            layer.mat += regulated;
             layer.bias += regulated_bias;
         }
     }
@@ -176,8 +186,8 @@ impl NeuralNetwork {
     ///  LayerTopology{num_neurons: 3},
     ///  LayerTopology{num_neurons: 1}];
     ///
-    /// //create a network with 3 layers. 4 input neurons, 3 hidden neurons, 1 output neuron
-    /// let net = NeuralNetwork::random(&topology, Some(0.1), None);
+    /// //create a network with 3 layers. 4 input neurons, 3 hidden neurons, 1 output neuron. It has a ReLu activation function
+    /// let net = NeuralNetwork::random(&topology, Some(0.1), None, ActivationFunction::ReLu);
     /// ```
     ///
     /// The example above creates a three layer neural net with 4 input neurons, 3 neurons in a hidden layer and a single output neuron.
@@ -421,32 +431,32 @@ mod tests {
         let layer_two_weights = vec![vec![0.04], vec![0. - 0.05]];
         let layer_two_bias = vec![0.08];
 
-        // let mut net = NeuralNetwork::load_weights(
-        //     vec![
-        //         LayerWeights {
-        //             weights: layer_one_weights,
-        //             bias: layer_one_bias,
-        //         },
-        //         LayerWeights {
-        //             weights: layer_two_weights,
-        //             bias: layer_two_bias,
-        //         },
-        //     ],
-        //     0.2,
-        //     0.2,
-        //     ActivationFunction::TanH
-        // );
-
-        let mut net = NeuralNetwork::random(
-            &[
-                LayerTopology { num_neurons: 2 },
-                LayerTopology { num_neurons: 3 },
-                LayerTopology { num_neurons: 1 },
+        let mut net = NeuralNetwork::load_weights(
+            vec![
+                LayerWeights {
+                    weights: layer_one_weights,
+                    bias: layer_one_bias,
+                },
+                LayerWeights {
+                    weights: layer_two_weights,
+                    bias: layer_two_bias,
+                },
             ],
-            Some(0.4),
-            None,
-            ActivationFunction::ReLu,
+            0.5,
+            0.2,
+            ActivationFunction::TanH
         );
+
+        // let mut net = NeuralNetwork::random(
+        //     &[
+        //         LayerTopology { num_neurons: 2 },
+        //         LayerTopology { num_neurons: 3 },
+        //         LayerTopology { num_neurons: 1 },
+        //     ],
+        //     Some(0.4),
+        //     None,
+        //     ActivationFunction::TanH,
+        // );
 
         let tolerance = 0.1;
         let num_epocs = 200;
