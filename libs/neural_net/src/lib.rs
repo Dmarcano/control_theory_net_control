@@ -67,6 +67,11 @@ trait Layer {
     fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64> + 'a>;
 }
 
+pub struct BackPropOutput { 
+    weight_changes : Vec<DMatrix<f64>>,
+    bias_changes : Vec<F64Vector> 
+}
+
 impl NeuralNetwork {
     /// propagates forward the input throughout the network and outputs the output from the
     /// final layer
@@ -99,11 +104,13 @@ impl NeuralNetwork {
         final_out
     }
 
+    
+
     /// Recomputes network weights by propagation an error vector along with the
     ///
     /// ### Note
     /// Backpropagation works
-    pub fn backprop(&mut self, err: F64Vector) {
+    pub fn backprop(&mut self, err: F64Vector) -> BackPropOutput {
         let mut weight_changes: Vec<DMatrix<f64>> = Vec::with_capacity(self.layers.len());
         let mut bias_changes = Vec::with_capacity(self.layers.len());
 
@@ -119,9 +126,9 @@ impl NeuralNetwork {
 
         // compute the weight change which is the input activation to the final layer and the delta
         let last_activation =  &self.layer_activations[self.layer_activations.len() - 1];
-        let weight_change = last_activation.transpose() * &prev_delta.transpose() ;
+        let weight_change = last_activation.transpose()* &prev_delta ;
 
-        weight_changes.push(DMatrix::from_columns(&[weight_change]));
+        weight_changes.push(weight_change);
         bias_changes.push(prev_delta.clone());
 
         // 2 compute all of the other's gradients
@@ -150,11 +157,14 @@ impl NeuralNetwork {
             bias_changes.push(delta.transpose());
             prev_delta = delta.transpose();
         }
-
-        self.update_weights(weight_changes, bias_changes);
+        // reverse the weights to get them in ascending weight order
+        weight_changes.reverse();
+        bias_changes.reverse();
+        BackPropOutput{weight_changes, bias_changes}
+        // self.update_weights(weight_changes, bias_changes);
     }
 
-    fn update_weights(&mut self, weight_changes : Vec<DMatrix<f64>>, bias_changes : Vec<F64Vector> ) { 
+    pub fn update_weights(&mut self, weight_changes : Vec<DMatrix<f64>>, bias_changes : Vec<F64Vector> ) { 
 
         let alpha = self.learning_rate; 
 
@@ -165,7 +175,9 @@ impl NeuralNetwork {
         {
             let regulated = weight_change.map(|val| val * alpha);
             let regulated_bias = bias_change.map(|val| val * alpha);
+            println!{"{}", layer.mat}
             layer.mat += regulated;
+            println!{"{}", layer.mat}
             layer.bias += regulated_bias;
         }
     }
@@ -442,7 +454,7 @@ mod tests {
                     bias: layer_two_bias,
                 },
             ],
-            0.2,
+            0.5,
             0.2,
             ActivationFunction::TanH
         );
@@ -459,7 +471,7 @@ mod tests {
         );
 
         let tolerance = 0.1;
-        let num_epocs = 200;
+        let num_epocs = 1;
 
         let mut can_stop = false;
 
@@ -485,6 +497,7 @@ mod tests {
 
                 // println!("Absolute Error at iteration {} is {}", i, diff[0].abs());
                 net.backprop(diff);
+                break
             }
 
             if can_stop {

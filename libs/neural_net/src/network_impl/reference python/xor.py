@@ -165,7 +165,7 @@ for training_epoch in range(100):
         
         # Step 3b: Accumulate all 9 gradient terms into weight
         # Deltas. If you want, you can merge steps 3a and 3b together.
-
+        x_debug = np.array([[w13, w14], [w23, w24]])
         # node 5
         D05 += G05
         D35 += G35
@@ -178,6 +178,25 @@ for training_epoch in range(100):
         D13 += G13 
         D23 += G23 
         D03 += G03
+
+        """
+        w13 + alpha * D13
+        w23 + alpha * D23
+        w03 + alpha * D03
+
+        w14 + alpha * D14
+        w24 + alpha * D24
+        w04 + alpha * D04
+
+        w35 + alpha * D35
+        w45 + alpha * D45
+        w05 + alpha * D05
+        """
+
+        x_debug_2 = np.array([
+            [w13+ alpha * D13, w14 + alpha * D14],
+            [w23 + alpha * D23, w24 + alpha * D24]])
+
 
 
         # TODO
