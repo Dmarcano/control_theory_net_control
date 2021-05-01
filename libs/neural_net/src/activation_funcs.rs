@@ -57,13 +57,27 @@ impl TanH {
     }
 }
 
+
+impl LeakyRelu {
+    
+    pub fn activation(input: f64) -> f64 {
+        input.max(0.0)
+    }
+
+    pub fn derivative(input: f64) -> f64 {
+        match input {
+            val if val > 0.0 => 1.0,
+            _ => 0.0,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::activation_funcs::*;
 
     #[test]
     fn relu_test() {
-        let relu = ReLu::activation;
         let in_out_pairs = [(1.0, 1.0), (1.5, 1.5), (0.0, 0.0), (-1.0, 0.0)];
 
         for (input, expected) in in_out_pairs.iter() {
@@ -72,5 +86,6 @@ mod tests {
         }
     }
 
+    #[test]
     fn relu_deriv_test() {}
 }

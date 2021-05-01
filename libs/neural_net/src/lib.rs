@@ -1,4 +1,4 @@
-mod activation_funcs;
+pub mod activation_funcs;
 mod network_impl;
 use nalgebra::{DMatrix, RowDVector};
 use rand::{rngs::OsRng, Rng};
@@ -209,7 +209,7 @@ impl NeuralNetwork {
     ///
     /// ## Example
     /// ```
-    /// use neural_net::*;
+    /// use neural_net::{NeuralNetwork,LayerTopology, activation_funcs::ActivationFunction };
     ///
     /// let topology = vec![
     ///  LayerTopology{num_neurons : 4},
@@ -223,9 +223,8 @@ impl NeuralNetwork {
     /// The example above creates a three layer neural net with 4 input neurons, 3 neurons in a hidden layer and a single output neuron.
     ///
     /// ## Note on Bias
-    /// The network does not automatically add a bias neuron and leaves
-    /// it to users to augment input vectors to include bias terms in their dataset
-    ///
+    /// The network automatically adds a bias portion to each neuron and does not expect 
+    /// any implementor to augment its input data to accomadate bias neurons.
     pub fn random(
         topology: &[LayerTopology],
         alpha: Option<f64>,
@@ -350,7 +349,7 @@ mod tests {
         )
     }
 
-    // #[test]
+    #[test]
     // test if our intermediate network outputs are what we expect them to be
     fn output_storage_test() {
         let mut net = default_network();
@@ -369,7 +368,7 @@ mod tests {
             .for_each(|(lhs, rhs)| assert!(approx::relative_eq!(lhs, rhs))); // compare "left-hand-side" to "right-hand-side"
     }
 
-    // #[test]
+    #[test]
     fn propagation_test() {
         // normal prop
         let mut net = default_network();
@@ -382,7 +381,7 @@ mod tests {
         assert_eq!(out[0], expected);
     }
 
-    // #[test]
+    #[test]
     fn back_prop_test_no_check() {
         let mut net = default_network();
 
@@ -399,7 +398,7 @@ mod tests {
         net.backprop(err);
     }
 
-    // #[test]
+    #[test]
     fn web_backprop_test() {
         let layer_one_weights = vec![vec![0.11, 0.12], vec![0.21, 0.08]];
         let layer_one_bias = vec![0.0, 0.0];
@@ -428,10 +427,10 @@ mod tests {
         let out = net.propagate(input.clone());
 
         // 1/2 * SSE for the target and output
-        let diff = &out - &target;
+        let diff =   &target - &out;
         let squared_error = squared_err(&target, &out);
-        // net.backprop(diff);
-        net.backprop(diff);
+        let backprop_out = net.backprop(diff);
+        net.update_weights(&backprop_out);
 
         let second_out = net.propagate(input);
 
@@ -477,17 +476,6 @@ mod tests {
             0.5,
             0.2,
             ActivationFunction::TanH
-        );
-
-        let mut net2 = NeuralNetwork::random(
-            &[
-                LayerTopology { num_neurons: 2 },
-                LayerTopology { num_neurons: 3 },
-                LayerTopology { num_neurons: 1 },
-            ],
-            Some(0.5),
-            None,
-            ActivationFunction::TanH,
         );
 
         let tolerance = 0.1;
