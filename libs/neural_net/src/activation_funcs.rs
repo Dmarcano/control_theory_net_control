@@ -18,8 +18,7 @@ pub(crate) fn get_functions(
         ActivationFunction::ReLu => return (&ReLu::activation, &ReLu::derivative),
         ActivationFunction::TanH => return (&TanH::activation, &TanH::derivative),
         ActivationFunction::Sigmoid => return (&Sigmoid::activation, &Sigmoid::derivative),
-        ActivationFunction::LeakyRelu => return (&LeakyRelu::activation, &LeakyRelu::derivative)
-        
+        ActivationFunction::LeakyRelu => return (&LeakyRelu::activation, &LeakyRelu::derivative),
     }
 }
 
@@ -56,11 +55,9 @@ impl TanH {
     }
 }
 
-
 impl LeakyRelu {
-    
     pub fn activation(input: f64) -> f64 {
-        input.max(0.01*input)
+        input.max(0.01 * input)
     }
 
     pub fn derivative(input: f64) -> f64 {

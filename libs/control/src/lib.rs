@@ -1,6 +1,5 @@
 pub mod time_domain_functions;
 
-
 #[cfg(test)]
 mod tests {
     #[test]

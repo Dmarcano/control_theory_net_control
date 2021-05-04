@@ -19,10 +19,7 @@ impl LayerMatrix {
         let mat = DMatrix::from_rows(row_vecs.as_ref());
         let bias = RowDVector::from_vec(input.bias);
 
-        LayerMatrix {
-            mat,
-            bias,
-        }
+        LayerMatrix { mat, bias }
     }
 
     /// computes the
@@ -50,16 +47,13 @@ impl LayerMatrix {
 
         let mat = DMatrix::from_vec(input_neurons, output_neurons, weights);
 
-        LayerMatrix {
-            mat,
-            bias,
-        }
+        LayerMatrix { mat, bias }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{LayerMatrix};
+    use super::LayerMatrix;
     use crate::LayerWeights;
     use approx::relative_eq;
     use nalgebra::RowDVector;

@@ -55,9 +55,9 @@ pub struct LayerWeights {
     pub bias: Vec<f64>,
 }
 
-pub struct BackPropOutput { 
-    weight_changes : Vec<DMatrix<f64>>,
-    bias_changes : Vec<F64Vector> 
+pub struct BackPropOutput {
+    weight_changes: Vec<DMatrix<f64>>,
+    bias_changes: Vec<F64Vector>,
 }
 
 impl NeuralNetwork {
@@ -92,15 +92,13 @@ impl NeuralNetwork {
         final_out
     }
 
-    
-
-    /// Computes the networks gradient relative to a given the derivative of the error with respect to 
+    /// Computes the networks gradient relative to a given the derivative of the error with respect to
     /// the networks output activation.
     ///
     /// ### Note
-    /// 
-    /// Backpropagation right now works on the assumption that the given input is part of a 
-    /// Sum of Squared Errors loss. That is the that the derivative is simply the raw error of the network output 
+    ///
+    /// Backpropagation right now works on the assumption that the given input is part of a
+    /// Sum of Squared Errors loss. That is the that the derivative is simply the raw error of the network output
     /// and the target
     pub fn backprop(&mut self, err: F64Vector) -> BackPropOutput {
         let mut weight_changes: Vec<DMatrix<f64>> = Vec::with_capacity(self.layers.len());
@@ -117,8 +115,8 @@ impl NeuralNetwork {
         let mut prev_delta = err.component_mul(&last_deriv); // we convert to a matrix because of nalgebras type system
 
         // compute the weight change which is the input activation to the final layer and the delta
-        let last_activation =  &self.layer_activations[self.layer_activations.len() - 1];
-        let weight_change = last_activation.transpose()* &prev_delta ;
+        let last_activation = &self.layer_activations[self.layer_activations.len() - 1];
+        let weight_change = last_activation.transpose() * &prev_delta;
 
         weight_changes.push(weight_change);
         bias_changes.push(prev_delta.clone());
@@ -134,11 +132,11 @@ impl NeuralNetwork {
             let weighted_sum_deriv = weighted_sum.map(|val| deriv(val));
             // take the next layer's weights multiplied by that layers error. multiply by the derivative
             // this is this layers delta or error
-            let debug =   &layer.mat * &prev_delta.transpose();
+            let debug = &layer.mat * &prev_delta.transpose();
             let delta = debug.component_mul(&weighted_sum_deriv.transpose());
 
             let weight_change = &delta * activation;
-            
+
             // update our variables to descent
             weight_changes.push(weight_change.transpose());
             bias_changes.push(delta.transpose());
@@ -147,36 +145,45 @@ impl NeuralNetwork {
         // reverse the weights to get them in ascending weight order
         weight_changes.reverse();
         bias_changes.reverse();
-        BackPropOutput{weight_changes, bias_changes}
+        BackPropOutput {
+            weight_changes,
+            bias_changes,
+        }
         // self.update_weights(weight_changes, bias_changes);
     }
 
     /// Combines the left hand side and right hand side backpropagation outputs into the sum of one output
-    pub fn combine_backprop_outputs(lhs :  BackPropOutput, rhs :& BackPropOutput) -> BackPropOutput { 
-        
-       let weight_changes = lhs.weight_changes
-       .into_iter()
-       .zip(rhs.weight_changes.iter())
-       .map(|(left_weight_changes, right_weight_changes )|left_weight_changes + right_weight_changes )
-       .collect();
+    pub fn combine_backprop_outputs(lhs: BackPropOutput, rhs: &BackPropOutput) -> BackPropOutput {
+        let weight_changes = lhs
+            .weight_changes
+            .into_iter()
+            .zip(rhs.weight_changes.iter())
+            .map(|(left_weight_changes, right_weight_changes)| {
+                left_weight_changes + right_weight_changes
+            })
+            .collect();
 
-        let bias_changes = lhs.bias_changes
-        .into_iter()
-        .zip(rhs.bias_changes.iter())
-        .map(|(left_bias_changes, right_bias_changes)| left_bias_changes + right_bias_changes)
-        .collect();
+        let bias_changes = lhs
+            .bias_changes
+            .into_iter()
+            .zip(rhs.bias_changes.iter())
+            .map(|(left_bias_changes, right_bias_changes)| left_bias_changes + right_bias_changes)
+            .collect();
 
-        BackPropOutput{weight_changes, bias_changes}
+        BackPropOutput {
+            weight_changes,
+            bias_changes,
+        }
     }
 
-    /// Updates a networks weights based on the given backpropagation output and the 
+    /// Updates a networks weights based on the given backpropagation output and the
     /// networks learning rate
     /// Currently this network does not implement any regularization.
-    pub fn update_weights(&mut self, output : &BackPropOutput ) { 
+    pub fn update_weights(&mut self, output: &BackPropOutput) {
+        let alpha = self.learning_rate;
 
-        let alpha = self.learning_rate; 
-
-        for ((weight_change, bias_change), layer) in output.weight_changes
+        for ((weight_change, bias_change), layer) in output
+            .weight_changes
             .iter()
             .zip(output.bias_changes.iter())
             .zip(self.layers.iter_mut())
@@ -187,7 +194,7 @@ impl NeuralNetwork {
             layer.bias += regulated_bias;
         }
     }
- 
+
     /// creates a brand new network using random weights and biases
     ///
     /// ## Arguments
@@ -211,7 +218,7 @@ impl NeuralNetwork {
     /// The example above creates a three layer neural net with 4 input neurons, 3 neurons in a hidden layer and a single output neuron.
     ///
     /// ## Note on Bias
-    /// The network automatically adds a bias portion to each neuron and does not expect 
+    /// The network automatically adds a bias portion to each neuron and does not expect
     /// any implementor to augment its input data to accomadate bias neurons.
     pub fn random(
         topology: &[LayerTopology],
@@ -415,7 +422,7 @@ mod tests {
         let out = net.propagate(input.clone());
 
         // 1/2 * SSE for the target and output
-        let diff =   &target - &out;
+        let diff = &target - &out;
         let squared_error = squared_err(&target, &out);
         let backprop_out = net.backprop(diff);
         net.update_weights(&backprop_out);
@@ -430,10 +437,10 @@ mod tests {
     #[test]
     fn xor_test() {
         let inputs = vec![
-            vec![ -1.0, -1.0],
-            vec![ -1.0, 1.0],
+            vec![-1.0, -1.0],
+            vec![-1.0, 1.0],
             vec![1.0, -1.0],
-            vec![ 1.0, 1.0],
+            vec![1.0, 1.0],
         ];
 
         let targets = vec![
@@ -448,9 +455,9 @@ mod tests {
         let layer_two_weights = vec![vec![0.04], vec![0. - 0.05]];
         let layer_two_bias = vec![0.08];
 
-        let mut backprop_accum : Option<BackPropOutput> = None; 
+        let mut backprop_accum: Option<BackPropOutput> = None;
 
-        let mut net2 = NeuralNetwork::load_weights(
+        let mut net = NeuralNetwork::load_weights(
             vec![
                 LayerWeights {
                     weights: layer_one_weights,
@@ -463,16 +470,8 @@ mod tests {
             ],
             0.5,
             0.2,
-            ActivationFunction::TanH
+            ActivationFunction::TanH,
         );
-
-        let mut net = NeuralNetwork::random(&[
-            LayerTopology{num_neurons :2 }, 
-            LayerTopology{num_neurons :3 }, 
-            LayerTopology{num_neurons :4 }, 
-            LayerTopology{num_neurons : 1}
-        ]
-            ,Some(0.4), None, ActivationFunction::Sigmoid);
 
         let tolerance = 0.1;
         let num_epocs = 100;
@@ -480,7 +479,7 @@ mod tests {
         let mut can_stop = false;
 
         for i in 0..num_epocs {
-            can_stop = true; 
+            can_stop = true;
 
             println!("Starting training epoch {}\n", i);
 
@@ -488,7 +487,6 @@ mod tests {
                 let out = net.propagate_vec(input_vec.to_vec());
                 let diff = target - &out;
 
-               
                 if diff[0].abs() >= tolerance {
                     can_stop = false;
                 }
@@ -500,16 +498,18 @@ mod tests {
 
                 // println!("Absolute Error at iteration {} is {}", i, diff[0].abs());
                 let back_prop_out = net.backprop(diff);
-                
-                backprop_accum = match backprop_accum { 
+
+                backprop_accum = match backprop_accum {
                     None => Some(back_prop_out),
-                    Some(accum) => Some(NeuralNetwork::combine_backprop_outputs(accum, &back_prop_out)  )
+                    Some(accum) => Some(NeuralNetwork::combine_backprop_outputs(
+                        accum,
+                        &back_prop_out,
+                    )),
                 };
             }
 
             let update = backprop_accum.take().unwrap();
             net.update_weights(&update);
-
 
             if can_stop {
                 println!("All correct so stopping!");
