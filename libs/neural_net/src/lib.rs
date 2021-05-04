@@ -55,18 +55,6 @@ pub struct LayerWeights {
     pub bias: Vec<f64>,
 }
 
-/// A trait for the behavior of what a nueral net layer should be like
-trait Layer {
-    /// propagates the input to each neuron in a layer.
-    /// Outputs a vector with the output of each neuron propagating on the whole input
-    /// Where the ith value is the response of the ith-neuron
-    fn propagate(&self, inputs: &F64Vector) -> F64Vector;
-
-    fn backprop(&mut self, err: f64) -> f64;
-
-    fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64> + 'a>;
-}
-
 pub struct BackPropOutput { 
     weight_changes : Vec<DMatrix<f64>>,
     bias_changes : Vec<F64Vector> 
@@ -462,7 +450,7 @@ mod tests {
 
         let mut backprop_accum : Option<BackPropOutput> = None; 
 
-        let mut net = NeuralNetwork::load_weights(
+        let mut net2 = NeuralNetwork::load_weights(
             vec![
                 LayerWeights {
                     weights: layer_one_weights,
@@ -477,6 +465,14 @@ mod tests {
             0.2,
             ActivationFunction::TanH
         );
+
+        let mut net = NeuralNetwork::random(&[
+            LayerTopology{num_neurons :2 }, 
+            LayerTopology{num_neurons :3 }, 
+            LayerTopology{num_neurons :4 }, 
+            LayerTopology{num_neurons : 1}
+        ]
+            ,Some(0.4), None, ActivationFunction::Sigmoid);
 
         let tolerance = 0.1;
         let num_epocs = 100;

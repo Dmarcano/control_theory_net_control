@@ -1,11 +1,10 @@
-use crate::{F64Vector, Layer, LayerWeights};
+use crate::{F64Vector, LayerWeights};
 use nalgebra::{DMatrix, RowDVector};
 use rand::Rng;
 
 pub struct LayerMatrix {
     pub mat: DMatrix<f64>,
     pub bias: RowDVector<f64>,
-    activation_func: Box<dyn Fn(f64) -> f64>,
 }
 
 impl LayerMatrix {
@@ -22,7 +21,6 @@ impl LayerMatrix {
 
         LayerMatrix {
             mat,
-            activation_func: Box::new(re_lu),
             bias,
         }
     }
@@ -54,44 +52,17 @@ impl LayerMatrix {
 
         LayerMatrix {
             mat,
-            activation_func: Box::new(re_lu),
             bias,
         }
     }
 }
 
-fn re_lu(val: f64) -> f64 {
-    (val).max(0.0)
-}
-
-impl Layer for LayerMatrix {
-    fn propagate(&self, inputs: &F64Vector) -> F64Vector {
-        let out = (inputs * &self.mat) + &self.bias;
-
-        RowDVector::from_iterator(
-            out.len(),
-            out.iter().map(|val| (self.activation_func)(*val)),
-        )
-    }
-
-    fn get_inner_repr<'a>(&'a self) -> Box<dyn Iterator<Item = &f64> + 'a> {
-        todo!()
-    }
-
-    fn backprop(&mut self, err: f64) -> f64 {
-        todo!()
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{Layer, LayerMatrix};
+    use super::{LayerMatrix};
     use crate::LayerWeights;
     use approx::relative_eq;
     use nalgebra::RowDVector;
-
-    #[test]
-    fn new_random_test() {}
 
     #[test]
     fn new_from_weights_test() {
@@ -129,7 +100,7 @@ mod tests {
 
         let layer = LayerMatrix::new_from_weights(LayerWeights { weights, bias });
 
-        let out = layer.propagate(&input);
+        let out = layer.weighted_sum(&input);
         let expected = vec![0.9, 1.5, 2.1];
 
         out.as_slice()

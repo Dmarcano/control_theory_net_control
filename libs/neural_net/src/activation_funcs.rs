@@ -18,9 +18,8 @@ pub(crate) fn get_functions(
         ActivationFunction::ReLu => return (&ReLu::activation, &ReLu::derivative),
         ActivationFunction::TanH => return (&TanH::activation, &TanH::derivative),
         ActivationFunction::Sigmoid => return (&Sigmoid::activation, &Sigmoid::derivative),
-        other => {
-            unimplemented!("Still have to implement {:?} activation function", other)
-        }
+        ActivationFunction::LeakyRelu => return (&LeakyRelu::activation, &LeakyRelu::derivative)
+        
     }
 }
 
@@ -61,13 +60,13 @@ impl TanH {
 impl LeakyRelu {
     
     pub fn activation(input: f64) -> f64 {
-        input.max(0.0)
+        input.max(0.01*input)
     }
 
     pub fn derivative(input: f64) -> f64 {
         match input {
             val if val > 0.0 => 1.0,
-            _ => 0.0,
+            _ => 0.01,
         }
     }
 }
@@ -85,7 +84,4 @@ mod tests {
             assert!(approx::relative_eq!(out, expected));
         }
     }
-
-    #[test]
-    fn relu_deriv_test() {}
 }
