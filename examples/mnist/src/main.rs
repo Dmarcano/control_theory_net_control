@@ -29,6 +29,14 @@ fn mnist_nn() -> NeuralNetwork {
 
 fn learning_epoch(nn : &mut NeuralNetwork, mnist_data : &MnistDataset) { 
 
+    for mnist_img in &mnist_data.train_set { 
+
+        let out = nn.propagate_vec(mnist_img.data.clone());
+
+        println!("out {}, target {}", out, mnist_img.label); 
+        break;
+    }
+
     unimplemented!()
 
 }
