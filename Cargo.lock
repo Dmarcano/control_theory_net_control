@@ -936,10 +936,17 @@ dependencies = [
 name = "mnist"
 version = "0.1.0"
 dependencies = [
- "byteorder",
+ "mnist_load",
  "neural_net",
  "pixels",
  "winit",
+]
+
+[[package]]
+name = "mnist_load"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
 ]
 
 [[package]]

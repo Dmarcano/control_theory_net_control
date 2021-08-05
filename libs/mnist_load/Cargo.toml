@@ -1,12 +1,9 @@
 [package]
-name = "mnist"
+name = "mnist_load"
 version = "0.1.0"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-neural_net = {path = "../../libs/neural_net"}
-mnist_load = {path ="../../libs/mnist_load"}
-pixels = "0.5.0"
-winit = "0.25.0"
+byteorder = "1.4.3"

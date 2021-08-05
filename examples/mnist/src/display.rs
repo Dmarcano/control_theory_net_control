@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::Write; 
-use crate::MnistImage; 
+use mnist_load::MnistImage; 
 
 
 pub fn to_ppm_file(path : &str, image : &MnistImage) -> Result<(), std::io::Error> { 
