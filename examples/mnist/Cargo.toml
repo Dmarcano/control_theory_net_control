@@ -7,3 +7,6 @@ edition = "2018"
 
 [dependencies]
 neural_net = {path = "../../libs/neural_net"}
+byteorder = "1.4.3"
+pixels = "0.5.0"
+winit = "0.25.0"
