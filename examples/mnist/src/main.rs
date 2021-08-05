@@ -1,4 +1,3 @@
-use std::borrow::BorrowMut;
 use std::fs::File; 
 use std::io::Cursor; 
 use std::io::Read;
@@ -9,7 +8,7 @@ use display::to_ppm_file;
 
 fn main() -> Result<(), std::io::Error> {
     let path = "data/";
-    let data_set = load_mnist_dataset(path)?; 
+    let data_set = load_mnist_from_path(path)?; 
 
     let out_path = "output/first.ppm";
     to_ppm_file(out_path, &data_set.train_set[0])?;
@@ -25,12 +24,10 @@ struct MnistFileData {
 
 
 impl MnistFileData { 
-    pub fn new(file : &mut File) -> Result<Self, std::io::Error> { 
 
-        let mut contents : Vec<u8> = Vec::new(); 
-        file.read_to_end(&mut contents)?; 
+    pub fn new_from_bytes(bytes : &[u8]) -> Result<Self, std::io::Error> { 
 
-        let mut reader = Cursor::new(&contents); 
+        let mut reader = Cursor::new(&bytes); 
         let magic_number = reader.read_i32::<BigEndian>()?;
 
         let mut sizes : Vec<i32> = Vec::new();
@@ -49,7 +46,7 @@ impl MnistFileData {
                 sizes.push(reader.read_i32::<BigEndian>()?);
                 sizes.push(reader.read_i32::<BigEndian>()?);
             }
-            _ => panic!("Problem reading file after magic number")
+            _ => panic!("Magic number not recognized as number for MNIST dataset")
         }
         
         reader.read_to_end(&mut data)?;
@@ -69,30 +66,21 @@ pub struct MnistImage {
 
 /// Structure that represents the data of the mnist dataset
 #[derive(Debug, Clone)]
-struct MnistDataset { 
+pub struct MnistDataset { 
     train_set : Vec<MnistImage>, 
     test_set : Vec<MnistImage>
 }
 
 
+pub fn load_mnist_from_bytes(train_data : &[u8], train_labels : &[u8], test_data : &[u8], test_labels : &[u8]) -> Result<MnistDataset, std::io::Error>{ 
 
-fn load_mnist_dataset(path : &str) -> Result<MnistDataset, std::io::Error>{ 
-    let file_prefixes = ["train", "t10k"];
-
-    let mut train_set : Vec<MnistImage> = Vec::new();
-    let mut test_set : Vec<MnistImage> = Vec::new();
-
-
-    for prefix in file_prefixes {
-        let image_filename = format!("{}/{}-images.idx3-ubyte", path, prefix); 
-        let label_filename = format!("{}/{}-labels.idx1-ubyte", path, prefix); 
-
-        let image_data = MnistFileData::new(&mut File::open(&image_filename)?)?; 
-        let label_data = MnistFileData::new(&mut File::open(&label_filename)?)?; 
+    let data_processing  = |data : &[u8], labels : &[u8]| -> std::result::Result<Vec<MnistImage>, std::io::Error> { 
+        println!("readin");
+        let image_data = MnistFileData::new_from_bytes(data)?; 
+        let label_data = MnistFileData::new_from_bytes(labels)?; 
 
         assert_eq!(image_data.sizes[0],label_data.sizes[0], "Image and label data sizes are not equal");
 
-        // let number_images = image_data.sizes[0] as usize; 
         let image_length = (image_data.sizes[1]*image_data.sizes[2]) as usize;
 
         let out : Vec<MnistImage> = image_data.data
@@ -104,14 +92,32 @@ fn load_mnist_dataset(path : &str) -> Result<MnistDataset, std::io::Error>{
             label: mnist_label
         }).collect();
 
-        match prefix {
-            "train" => {train_set = out}
-            "t10k" => {test_set = out}
-            _ => {panic!("Unexpected match while parsing mnist files")}
-        }
-    }
-    Ok(MnistDataset{
-        train_set, 
-        test_set
-    })
+        Ok(out)
+    };
+
+    let train_set = data_processing(train_data, train_labels)?;
+    let test_set = data_processing(test_data, test_labels)?;
+
+    Ok(MnistDataset{train_set, test_set})
+}
+
+
+fn load_mnist_from_path(path : &str) -> Result<MnistDataset, std::io::Error> {
+    let mut train_images_file = File::open(format!("{}/train-images.idx3-ubyte", path))?; 
+    let mut train_labels_file = File::open(format!("{}/train-labels.idx1-ubyte", path))?; 
+    let mut test_images_file = File::open(format!("{}/t10k-images.idx3-ubyte", path))?; 
+    let mut test_labels_file = File::open(format!("{}/t10k-labels.idx1-ubyte", path))?; 
+
+    let extract_file = |f : &mut File| -> std::result::Result<std::vec::Vec<u8>, std::io::Error> {
+        let mut output : Vec<u8> = Vec::new(); 
+        f.read_to_end(&mut output)?;
+        Ok(output)
+    };
+
+    let train_data = extract_file(&mut train_images_file)?;
+    let train_labels = extract_file(&mut train_labels_file)?;
+    let test_data = extract_file(&mut test_images_file)?; 
+    let test_labels = extract_file(&mut test_labels_file)?;
+
+    load_mnist_from_bytes(&train_data, &train_labels, &test_data, &test_labels)
 }
